@@ -19,7 +19,11 @@ def getuserspending(acct: int, semester: int, format: str, cid=105):
 
     if 'skey' in session:
         payload = {'skey': session['skey'], 'format': format, 'startdate': start_date, 'enddate': end_date, 'acct': acct, 'cid': cid}
-        return requests.get("https://tigerspend.rit.edu/statementdetail.php", payload)
+        response = requests.get("https://tigerspend.rit.edu/statementdetail.php", payload)
+
+        lines = response.content.decode(response.encoding).splitlines()
+        reader = csv.reader(lines)
+        return list(reader)
     else:
         return None
 
@@ -28,6 +32,18 @@ def getuserspending(acct: int, semester: int, format: str, cid=105):
 
 @app.route('/')
 def landing():
+
+    if 'skey' in session:
+        parsed_csv = getuserspending(55, 2221, 'csv')
+
+        if len(parsed_csv[0]) < 4:
+            session.pop('skey')
+            return redirect('/')
+
+        return render_template("index.html", session=session, current_balance=float(parsed_csv[1][3]))
+
+
+
     return render_template("index.html", session=session)
 
 @app.route('/auth')
@@ -41,12 +57,8 @@ def auth():
 @app.route('/budget')
 def budget():
     if 'skey' in session:
-
-        response = getuserspending(55, 2221, "csv")
-
-        lines = response.content.decode(response.encoding).splitlines()
-        reader = csv.reader(lines)
-        parsed_csv = list(reader)
+        parsed_csv = getuserspending(55, 2221, 'csv')
+        
 
         if len(parsed_csv[0]) < 4:
             session.pop('skey')
