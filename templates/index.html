@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block navbar %}
+    <li class="nav-item">
+        <a class="nav-link foreground" href="#">Landing</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link foreground" href="/budget">Budget</a>
+    </li>
+{% endblock %}
+{% block content %}
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-4">
+                <div class="container">
+                    {% if 'skey' in session %}
+                        <h6 style="color:greenyellow">Authentication key detected!</h6>
+                    {% else %}
+                        <h6 style="color:red">No key detected, need to authenticate:</h6>
+                        <a class="btn btn-outline-danger" href="https://tigerspend.rit.edu/login.php?wason=http://localhost:8080/auth">VALIDATE</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
