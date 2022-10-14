@@ -13,25 +13,41 @@
         </div>
         {% if 'skey' in session %}
         <div class="row">
-            <div class="col-sm-6" style="margin-left:auto; margin-right:auto;">
+            <div class="col-sm-6" style="margin-left:auto; margin-right:auto; margin-top:25px">
                 <div class="row">
                     <div class="container" style="border:4px solid #1B998B">
-                        <h3 class="sectiontitle">Current Balance</h3>
+                        <h3 class="foreground" style="margin-top:10px">
+                            Current Balance 
+                            <span>
+                                {% if session['dining_id'] == 54 %}
+                                    (Orange Plan)
+                                {% elif session['dining_id'] == 55 %}
+                                    (Tiger Plan)
+                                {% else %}
+                                    (Unrecognized)
+                                {% endif %}
+                            </span>
+                        </h3>
                         <h1 class="primary" style="font-size:150px">${{data[0]|round(2)}}</h1>
                     </div>
                 </div>
                 <div class="row" style="margin-left:auto; margin-right:auto; margin-top:20px">
                     <div class="col-sm-1"></div>
-                    <div class="col-sm-4" style="border:4px solid #1B998B">
+                    <div class="col-sm-3" style="border:4px solid #1B998B">
                         <h5 class="foreground">TODAY</h5>
+                        <h3 class="primary">${{data[2]|round(2)}}</h3>
+                    </div>
+                    <div class="col-sm-1"></div>
+                    <div class="col-sm-2" style="border:4px solid #1B998B">
+                        <h5 class="foreground">USAGE</h5>
                         {% if data[1] > data[2] %}
-                            <h3 class="primary">${{data[2]|round(2)}} <span style="color:greenyellow">({{((data[2] - data[1]) / data[1])|round(2) * 100}}%)</span></h3>
+                            <h3 class="primary" style="color:greenyellow">{{100 + ((data[2] - data[1]) / data[1])|round(2) * 100}}%</h3>
                         {% else %}
-                            <h3 class="primary">${{data[2]|round(2)}} <span style="color:red">({{((data[2] - data[1]) / data[1])|round(2) * 100}}%)</span></h3>
+                            <h3 class="primary" style="color:red">{{100 + ((data[2] - data[1]) / data[1])|round(2) * 100}}%</h3>
                         {% endif %}
                     </div>
-                    <div class="col-sm-2"></div>
-                    <div class="col-sm-4" style="border:4px solid #1B998B">
+                    <div class="col-sm-1"></div>
+                    <div class="col-sm-3" style="border:4px solid #1B998B">
                         <h5 class="foreground">DAILY BUDGET</h5>
                         <h3 class="primary">${{data[1]|round(2)}}</h3>
                     </div>
@@ -39,16 +55,21 @@
                 </div>
                 <div class="row" style="margin-left:auto; margin-right:auto; margin-top:15px">
                     <div class="col-sm-1"></div>
-                    <div class="col-sm-4" style="border:4px solid #1B998B">
+                    <div class="col-sm-3" style="border:4px solid #1B998B">
                         <h5 class="foreground">PAST WEEK</h5>
+                        <h3 class="primary">${{data[3]|round(2)}}</h3>
+                    </div>
+                    <div class="col-sm-1"></div>
+                    <div class="col-sm-2" style="border:4px solid #1B998B">
+                        <h5 class="foreground">USAGE</h5>
                         {% if data[1] * 7 > data[3] %}
-                            <h3 class="primary">${{data[3]|round(2)}} <span style="color:greenyellow">({{((data[3] - data[1] * 7) / (data[1] * 7))|round(2) * 100}}%)</span></h3>
+                            <h3 class="primary" style="color:greenyellow">{{100 + ((data[3] - data[1] * 7) / (data[1] * 7))|round(2) * 100}}%</span></h3>
                         {% else %}
-                            <h3 class="primary">${{data[3]|round(2)}} <span style="color:red">({{((data[3] - data[1] * 7) / (data[1] * 7))|round(2) * 100}}%)</span></h3>
+                            <h3 class="primary" style="color:red">{{100 + ((data[3] - data[1] * 7) / (data[1] * 7))|round(2) * 100}}%</span></h3>
                         {% endif %}
                     </div>
-                    <div class="col-sm-2"></div>
-                    <div class="col-sm-4" style="border:4px solid #1B998B">
+                    <div class="col-sm-1"></div>
+                    <div class="col-sm-3" style="border:4px solid #1B998B">
                         <h5 class="foreground">WEEKLY BUDGET</h5>
                         <h3 class="primary">${{(data[1] * 7)|round(2)}}</h3>
                     </div>
@@ -56,16 +77,21 @@
                 </div>
                 <div class="row" style="margin-left:auto; margin-right:auto; margin-top:15px">
                     <div class="col-sm-1"></div>
-                    <div class="col-sm-4" style="border:4px solid #1B998B">
+                    <div class="col-sm-3" style="border:4px solid #1B998B">
                         <h5 class="foreground">PAST MONTH</h5>
+                        <h3 class="primary">${{data[4]|round(2)}}</h3>
+                    </div>
+                    <div class="col-sm-1"></div>
+                    <div class="col-sm-2" style="border:4px solid #1B998B">
+                        <h5 class="foreground">USAGE</h5>
                         {% if data[1] * 30 > data[4] %}
-                            <h3 class="primary">${{data[4]|round(2)}} <span style="color:greenyellow">({{((data[4] - data[1] * 30) / (data[1] * 30))|round(2) * 100}}%)</span></h3>
+                            <h3 class="primary" style="color:greenyellow">{{100 + ((data[4] - data[1] * 30) / (data[1] * 30))|round(2) * 100}}%</span></h3>
                         {% else %}
-                            <h3 class="primary">${{data[4]|round(2)}} <span style="color:red">({{((data[4] - data[1] * 30) / (data[1] * 30))|round(2) * 100}}%)</span></h3>
+                            <h3 class="primary" style="color:red">{{100 + ((data[4] - data[1] * 30) / (data[1] * 30))|round(2) * 100}}%</span></h3>
                         {% endif %}
                     </div>
-                    <div class="col-sm-2"></div>
-                    <div class="col-sm-4" style="border:4px solid #1B998B">
+                    <div class="col-sm-1"></div>
+                    <div class="col-sm-3" style="border:4px solid #1B998B">
                         <h5 class="foreground">MONTHLY BUDGET</h5>
                         <h3 class="primary">${{(data[1] * 30)|round(2)}}</h3>
                     </div>
