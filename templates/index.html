@@ -1,35 +1,78 @@
 {% extends 'base.html' %}
-{% block navbar %}
-    <li class="nav-item">
-        <a class="nav-link foreground" href="#">Landing</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link foreground" href="/budget">Budget</a>
-    </li>
-{% endblock %}
 {% block content %}
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-sm-4">
-                <div class="container">
-                    {% if 'skey' in session %}
-                        <h6 style="color:greenyellow">Authentication key detected!</h6>
-                    {% else %}
-                        <h6 style="color:red">No key detected, need to authenticate:</h6>
-                        <a class="btn btn-outline-danger" href="https://tigerspend.rit.edu/login.php?wason=http://localhost:8080/auth">VALIDATE</a>
+    <div class="container-fluid" style="margin-left:auto; margin-right:auto;" >
+        <div class="row" style="margin-left:auto; margin-right:auto">
+            <div class="col">
+                <div class="container" style="text-align:center">
+                    {% if not 'skey' in session %}
+                    <h5 style="color:red">No key detected, need to authenticate:</h5>
+                    <a class="btn btn-outline-danger" href="https://tigerspend.rit.edu/login.php?wason=http://localhost:8080/auth">VALIDATE</a>
                     {% endif %}
                 </div>
             </div>
         </div>
+        {% if 'skey' in session %}
         <div class="row">
             <div class="col-sm-6" style="margin-left:auto; margin-right:auto;">
                 <div class="row">
-                    <div class="container">
-                        <h3 class="foreground">Current Balance</h3>
-                        <h2 class="primary">{{current_balance}}</h2>
+                    <div class="container" style="border:4px solid #1B998B">
+                        <h3 class="sectiontitle">Current Balance</h3>
+                        <h1 class="primary" style="font-size:150px">${{data[0]|round(2)}}</h1>
                     </div>
+                </div>
+                <div class="row" style="margin-left:auto; margin-right:auto; margin-top:20px">
+                    <div class="col-sm-1"></div>
+                    <div class="col-sm-4" style="border:4px solid #1B998B">
+                        <h5 class="foreground">TODAY</h5>
+                        {% if data[1] > data[2] %}
+                            <h3 class="primary">${{data[2]|round(2)}} <span style="color:greenyellow">({{((data[2] - data[1]) / data[1])|round(2) * 100}}%)</span></h3>
+                        {% else %}
+                            <h3 class="primary">${{data[2]|round(2)}} <span style="color:red">({{((data[2] - data[1]) / data[1])|round(2) * 100}}%)</span></h3>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-2"></div>
+                    <div class="col-sm-4" style="border:4px solid #1B998B">
+                        <h5 class="foreground">DAILY BUDGET</h5>
+                        <h3 class="primary">${{data[1]|round(2)}}</h3>
+                    </div>
+                    <div class="col-sm-1"></div>
+                </div>
+                <div class="row" style="margin-left:auto; margin-right:auto; margin-top:15px">
+                    <div class="col-sm-1"></div>
+                    <div class="col-sm-4" style="border:4px solid #1B998B">
+                        <h5 class="foreground">PAST WEEK</h5>
+                        {% if data[1] * 7 > data[3] %}
+                            <h3 class="primary">${{data[3]|round(2)}} <span style="color:greenyellow">({{((data[3] - data[1] * 7) / (data[1] * 7))|round(2) * 100}}%)</span></h3>
+                        {% else %}
+                            <h3 class="primary">${{data[3]|round(2)}} <span style="color:red">({{((data[3] - data[1] * 7) / (data[1] * 7))|round(2) * 100}}%)</span></h3>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-2"></div>
+                    <div class="col-sm-4" style="border:4px solid #1B998B">
+                        <h5 class="foreground">WEEKLY BUDGET</h5>
+                        <h3 class="primary">${{(data[1] * 7)|round(2)}}</h3>
+                    </div>
+                    <div class="col-sm-1"></div>
+                </div>
+                <div class="row" style="margin-left:auto; margin-right:auto; margin-top:15px">
+                    <div class="col-sm-1"></div>
+                    <div class="col-sm-4" style="border:4px solid #1B998B">
+                        <h5 class="foreground">PAST MONTH</h5>
+                        {% if data[1] * 30 > data[4] %}
+                            <h3 class="primary">${{data[4]|round(2)}} <span style="color:greenyellow">({{((data[4] - data[1] * 30) / (data[1] * 30))|round(2) * 100}}%)</span></h3>
+                        {% else %}
+                            <h3 class="primary">${{data[4]|round(2)}} <span style="color:red">({{((data[4] - data[1] * 30) / (data[1] * 30))|round(2) * 100}}%)</span></h3>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-2"></div>
+                    <div class="col-sm-4" style="border:4px solid #1B998B">
+                        <h5 class="foreground">MONTHLY BUDGET</h5>
+                        <h3 class="primary">${{(data[1] * 30)|round(2)}}</h3>
+                    </div>
+                    <div class="col-sm-1"></div>
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 {% endblock %}
