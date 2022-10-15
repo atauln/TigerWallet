@@ -21,9 +21,8 @@ def get_user_spending(acct: int, semester: int, format_output: str, cid=105):
 
     # check the semester ID and update start and end dates accordingly
     if semester == 2221:
-        start_date = "2022-08-01"
+        start_date = "2022-07-01"
         end_date = "2022-12-14"
-
 
     if 'skey' in session:
         # send TigerSpend the payload details and get CSV back
@@ -35,6 +34,7 @@ def get_user_spending(acct: int, semester: int, format_output: str, cid=105):
             'acct': acct,
             'cid': cid
         }
+
         response = requests.get("https://tigerspend.rit.edu/statementdetail.php", payload)
 
         # decode the CSV and turn into an array of records
@@ -68,15 +68,20 @@ def get_spending_over_time(csv_file, days=7, offset=0):
     """Return cost over a certain pay period."""
     daily_spent = get_daily_spending(csv_file)
 
-    money_spent_week = 0
+    money_spent = 0
     today = datetime.datetime.today()
     for daydelta in range(offset, days + offset):
         # get the date of the start of the range
         target = datetime.timedelta(days=daydelta)
 
         # add on the spending per day
-        money_spent_week += daily_spent[datetime.datetime.strftime(today - target, "%m/%d/%Y")]
-    return money_spent_week
+        try:
+            money_spent += daily_spent[datetime.datetime.strftime(today - target, "%m/%d/%Y")]
+        except KeyError:
+            # continues if there is no date provided in the dictionary
+            # (no payments that date)
+            continue
+    return money_spent
 
 @app.route('/')
 def landing():
@@ -105,10 +110,10 @@ def landing():
             dining_id = 53
             while parsed_csv[1][2] == '':
                 dining_id += 1
-                parsed_csv = get_user_spending(id, 2221, 'csv')
+                parsed_csv = get_user_spending(dining_id, 2221, 'csv')
 
             # save the meal plan to your session
-            session['dining_id'] = id
+            session['dining_id'] = dining_id
 
         # invalidate session, retry authentication
         if len(parsed_csv[0]) < 4:
@@ -136,7 +141,7 @@ def landing():
         # packaging up data to send to template
         data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1), get_spending_over_time(parsed_csv, 7), get_spending_over_time(parsed_csv, 30)]
 
-        return render_template("index.html", session=session, data=data)
+        return render_template("index.html", session=session, data=data, records=parsed_csv)
 
     return render_template("index.html", session=session)
 
@@ -146,4 +151,5 @@ def auth():
     # authenticate user based on redirect from tigerspend with skey enclosed as arg
     if 'skey' in request.args.keys():
         session['skey'] = str(request.args.get('skey'))
+        
     return redirect('/')
