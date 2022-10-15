@@ -52,12 +52,9 @@ def get_daily_spending(csv_file):
         # keys in the dictionary are the date on which transactions occurred
         key = record[0].split(" ")[0]
         try:
-            if key in daily_spent:
-                # add to the sum in the pair
-                daily_spent[key] -= round(float(record[2]), 2)
-            else:
-                # create the key-value pair, and initialize with this record's value
-                daily_spent[key] = -round(float(record[2]), 2)
+            if not key in daily_spent:
+                daily_spent[key] = 0
+            daily_spent[key] -= round(float(record[2]), 2)
         except ValueError:
             continue
         except IndexError:
@@ -73,10 +70,11 @@ def get_spending_over_time(csv_file, days=7, offset=0):
     for daydelta in range(offset, days + offset):
         # get the date of the start of the range
         target = datetime.timedelta(days=daydelta)
+        target_date = datetime.datetime.strftime(today - target, "%-m/%d/%Y")
 
         # add on the spending per day
         try:
-            money_spent += daily_spent[datetime.datetime.strftime(today - target, "%m/%d/%Y")]
+            money_spent += daily_spent[target_date]
         except KeyError:
             # continues if there is no date provided in the dictionary
             # (no payments that date)
@@ -139,7 +137,8 @@ def landing():
         daily_budget = round(((current_balance + get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
 
         # packaging up data to send to template
-        data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1), get_spending_over_time(parsed_csv, 7), get_spending_over_time(parsed_csv, 30)]
+        data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1), get_spending_over_time(parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1)]
+
 
         return render_template("index.html", session=session, data=data, records=parsed_csv)
 
@@ -151,5 +150,5 @@ def auth():
     # authenticate user based on redirect from tigerspend with skey enclosed as arg
     if 'skey' in request.args.keys():
         session['skey'] = str(request.args.get('skey'))
-        
+
     return redirect('/')

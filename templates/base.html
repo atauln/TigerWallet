@@ -5,31 +5,35 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         .foreground {
-            color: #f8f1ff;
+            color: #1B998B; 
             text-align:center;
         }
         .primary {
             color: #ff6666;
             text-align:center;
         }
-        .background {
-            background-color: #023c40;
-            text-align:center;
-        }
-        .sectiontitle {
-            color: #1B998B;
-            text-align:center;
-        }
-        body {
+        .dark {
             background-size: cover;
-            background-color: #023c40;
+            background-color: #09332e;
+        }
+        .light {
+            background-size: cover;
+            background-color: #ebf7f6;
+        }
+        .heading {
+            margin-top:10px;
+            background-color:#1B998B;
+            color:white;
+            text-align:center
         }
     </style>
 </header>
+{% block bodytag %}
 <body>
+{% endblock %}
     
-    <nav class="navbar navbar-expand-sm">
-        <div class="container-fluid" style="border-bottom:3px solid black">
+    <nav class="navbar navbar-expand-sm" style="border-bottom:2px solid black; background-color:#1B998B">
+        <div class="container-fluid">
             <ul class="navbar-nav">
                 <li class="nav-item">
                     <a class="nav-link foreground" href="/">Landing</a>
