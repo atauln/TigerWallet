@@ -1,10 +1,18 @@
 {% extends 'base.html' %}
 {% block bodytag %}
-<body class="dark">
+{% if 'theme' in session %}
+    {% if session['theme'] == "light" %}
+    <body class="light">
+    {% else %}
+    <body class="dark">
+    {% endif %}
+{% else %}
+    <body class="light">
+{% endif %}
 {% endblock %}
 {% block content %}
-    <div class="container-fluid" style="margin-left:auto; margin-right:auto;" >
-        <div class="row" style="margin-left:auto; margin-right:auto">
+    <div class="container-fluid">
+        <div class="row" style="height:fit-content">
             <div class="col">
                 <div class="container" style="text-align:center">
                     {% if not 'skey' in session %}
@@ -15,17 +23,10 @@
             </div>
         </div>
         {% if 'skey' in session %}
-        <script>
-            function timedRefresh(timeoutPeriod) {
-                setTimeout("location.reload(true);",timeoutPeriod);
-            }
-            
-            window.onload = timedRefresh(300_000);
-        </script>
         <div class="row">
-            <div class="col-sm-6" style="margin-left:auto; margin-right:auto; margin-top:25px">
-                <div class="row">
-                    <div class="container" style="border:4px solid #1B998B">
+            <div class="col-sm-7">
+                <div class="row" style="height:fit-content">
+                    <div class="container section">
                         <h3 class="heading">
                             Current Balance 
                             <span>
@@ -42,14 +43,14 @@
                         <h6 class="foreground" style="font-size:20px">({{((data[0] * 100 / records[-1][2]|float)|round(2))}}%)</h6>
                     </div>
                 </div>
-                <div class="row" style="margin-left:auto; margin-right:auto; margin-top:20px">
+                <div class="row" style="margin-top:20px">
                     <div class="col-sm-1"></div>
-                    <div class="col-sm-3" style="border:4px solid #1B998B">
+                    <div class="col-sm-3 section">
                         <h5 class="heading">TODAY</h5>
                         <h3 class="primary">${{data[2]|round(2)}}</h3>
                     </div>
                     <div class="col-sm-1"></div>
-                    <div class="col-sm-2" style="border:4px solid #1B998B">
+                    <div class="col-sm-2 section">
                         <h5 class="heading">USAGE</h5>
                         {% if data[1] > data[2] %}
                             <h3 class="primary" style="color:greenyellow">{{(100 + ((data[2] - data[1]) / data[1]) * 100)|round(2)}}%</h3>
@@ -58,20 +59,20 @@
                         {% endif %}
                     </div>
                     <div class="col-sm-1"></div>
-                    <div class="col-sm-3" style="border:4px solid #1B998B">
+                    <div class="col-sm-3 section">
                         <h5 class="heading">DAILY BUDGET</h5>
                         <h3 class="primary">${{data[1]|round(2)}}</h3>
                     </div>
                     <div class="col-sm-1"></div>
                 </div>
-                <div class="row" style="margin-left:auto; margin-right:auto; margin-top:15px">
+                <div class="row" style="margin-top:15px">
                     <div class="col-sm-1"></div>
-                    <div class="col-sm-3" style="border:4px solid #1B998B">
+                    <div class="col-sm-3 section">
                         <h5 class="heading">PAST WEEK</h5>
                         <h3 class="primary">${{data[3]|round(2)}}</h3>
                     </div>
                     <div class="col-sm-1"></div>
-                    <div class="col-sm-2" style="border:4px solid #1B998B">
+                    <div class="col-sm-2 section">
                         <h5 class="heading">USAGE</h5>
                         {% if data[1] * 7 > data[3] %}
                             <h3 class="primary" style="color:greenyellow">{{(100 + ((data[3] - data[1] * 7) / (data[1] * 7)) * 100)|round(2)}}%</span></h3>
@@ -80,20 +81,20 @@
                         {% endif %}
                     </div>
                     <div class="col-sm-1"></div>
-                    <div class="col-sm-3" style="border:4px solid #1B998B">
+                    <div class="col-sm-3 section">
                         <h5 class="heading">WEEKLY BUDGET</h5>
                         <h3 class="primary">${{(data[1] * 7)|round(2)}}</h3>
                     </div>
                     <div class="col-sm-1"></div>
                 </div>
-                <div class="row" style="margin-left:auto; margin-right:auto; margin-top:15px">
+                <div class="row" style="margin-top:15px">
                     <div class="col-sm-1"></div>
-                    <div class="col-sm-3" style="border:4px solid #1B998B">
+                    <div class="col-sm-3 section">
                         <h5 class="heading">PAST 30 DAYS</h5>
                         <h3 class="primary">${{data[4]|round(2)}}</h3>
                     </div>
                     <div class="col-sm-1"></div>
-                    <div class="col-sm-2" style="border:4px solid #1B998B">
+                    <div class="col-sm-2 section">
                         <h5 class="heading">USAGE</h5>
                         {% if data[1] * 30 > data[4] %}
                             <h3 class="primary" style="color:greenyellow">{{(100 + ((data[4] - data[1] * 30) / (data[1] * 30)) * 100)|round(2)}}%</span></h3>
@@ -102,7 +103,7 @@
                         {% endif %}
                     </div>
                     <div class="col-sm-1"></div>
-                    <div class="col-sm-3" style="border:4px solid #1B998B">
+                    <div class="col-sm-3 section">
                         <h5 class="heading">MONTHLY BUDGET</h5>
                         <h3 class="primary">${{(data[1] * 30)|round(2)}}</h3>
                     </div>

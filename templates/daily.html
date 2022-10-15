@@ -1,0 +1,28 @@
+<!-- Variables needed: session -->
+
+{% extends 'base.html' %}
+
+{% block bodytag %}
+{% if 'theme' in session %}
+    {% if session['theme'] == "light" %}
+    <body class="light">
+    {% else %}
+    <body class="dark">
+    {% endif %}
+{% else %}
+    <body class="light">
+{% endif %}
+{% endblock %}
+
+{% block content %}
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-7 section">
+                <div class="col-sm-3 section" style="margin:10px">
+                    <h3 class="heading">MONEY SPENT TODAY</h3>
+                    <h1 class="primary">${{data[0]}}</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

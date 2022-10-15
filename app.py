@@ -16,6 +16,52 @@ colors = ["ff6666", "f8f1ff", "023c40"] # primary, foreground, background
 
 app.secret_key = 'haha_gamer'
 
+def verify_skey_integrity():
+    """Verifies the integrity of the session variables.
+
+    Regenerates them if they are found to have expired."""
+
+    # validate that it is returning an actual csv, and not an HTML
+    parsed_csv = [['', '', '', ''], ['', '', '', '']]
+    if 'skey' in session:
+        if 'dining_id' in session:
+            parsed_csv = get_user_spending(session['dining_id'], 2221, 'csv')
+            try:
+                # if it returns a csv but it does not contain anything at this point,
+                # it means that there is no account under this name
+                if parsed_csv[1][2] == '':
+                    session.pop('dining_id')
+                    return verify_skey_integrity()
+
+            except IndexError:
+                # if it gets an exception, it's because it returned an HTML,
+                # in which case the skey is invalid
+                session.pop('skey')
+                session.pop('dining_id')
+                return []
+
+        else:
+            # iterate until you find the account id that works for dining dollars
+            # locates meal plan in use
+
+            dining_id = 53
+            while parsed_csv[1][2] == '':
+                dining_id += 1
+                parsed_csv = get_user_spending(dining_id, 2221, 'csv')
+
+            # save the meal plan to your session
+            session['dining_id'] = dining_id
+
+        # invalidate session, retry authentication
+        if len(parsed_csv) < 4:
+            session.pop('skey')
+            session.pop('dining_id')
+            return verify_skey_integrity()
+    else:
+        return []
+    return parsed_csv
+
+
 def get_user_spending(acct: int, semester: int, format_output: str, cid=105):
     """Return user spending information."""
 
@@ -85,64 +131,54 @@ def get_spending_over_time(csv_file, days=7, offset=0):
 def landing():
     """Method run upon landing on the main page."""
     # first check if the skey is already contained in the session
-    if 'skey' in session:
-        # validate that it is returning an actual csv, and not an HTML
-        parsed_csv = [['', '', '', ''], ['', '', '', '']]
-        if 'dining_id' in session:
-            parsed_csv = get_user_spending(session['dining_id'], 2221, 'csv')
-            try:
-                # if it returns a csv but it does not contain anything at this point,
-                # it means that there is no account under this name
-                if parsed_csv[1][2] == '':
-                    session.pop('dining_id')
-                    return redirect('/')
-            except IndexError:
-                # if it gets an exception, it's because it returned an HTML,
-                # in which case the skey is invalid
-                session.pop('skey')
-                session.pop('dining_id')
-                return redirect('/')
-        else:
-            # iterate until you find the account id that works for dining dollars
-            # locates meal plan in use
-            dining_id = 53
-            while parsed_csv[1][2] == '':
-                dining_id += 1
-                parsed_csv = get_user_spending(dining_id, 2221, 'csv')
 
-            # save the meal plan to your session
-            session['dining_id'] = dining_id
+    parsed_csv = verify_skey_integrity()
+    if 'skey' not in session:
+        return render_template("index.html", session=session)
 
-        # invalidate session, retry authentication
-        if len(parsed_csv[0]) < 4:
-            session.pop('skey')
-            session.pop('dining_id')
-            return redirect('/')
+    date_unprocessed = datetime.datetime.today()
+    current_date = datetime.datetime.strftime(date_unprocessed, "%-m/%d/%Y")
 
-        current_date_time = datetime.datetime.today().strftime("%m/%d/%Y")
+    last_date = "12/14/2022"
 
-        #first_date = parsed_csv[-2][0].split(' ')[0]
-        current_date = current_date_time.split(' ')[0]
-        last_date = "12/14/2022"
+    date_format = "%m/%d/%Y"
 
-        date_format = "%m/%d/%Y"
+    # get the number of days until the end of the semester
+    delta = datetime.datetime.strptime(last_date, date_format) - datetime.datetime.strptime(current_date, date_format)
 
-        # get the number of days until the end of the semester
-        delta = datetime.datetime.strptime(last_date, date_format) - datetime.datetime.strptime(current_date, date_format)
+    #starting_balance = float(parsed_csv[-1][3]) - float(parsed_csv[-1][2])
+    current_balance = float(parsed_csv[1][3])
 
-        #starting_balance = float(parsed_csv[-1][3]) - float(parsed_csv[-1][2])
-        current_balance = float(parsed_csv[1][3])
+    # get daily budget based off balance in account yesterday
+    daily_budget = round(((current_balance + get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
 
-        # get daily budget based off balance in account yesterday
-        daily_budget = round(((current_balance + get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
+    # packaging up data to send to template
+    data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1), get_spending_over_time(parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1)]
 
-        # packaging up data to send to template
-        data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1), get_spending_over_time(parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1)]
+    return render_template("index.html", session=session, data=data, records=parsed_csv)
 
+@app.route('/daily')
+def daily():
+    """Method run upon opening the Daily tab"""
+    parsed_csv = verify_skey_integrity()
+    if 'skey' not in session:
+        return redirect('/')
 
-        return render_template("index.html", session=session, data=data, records=parsed_csv)
+    total = get_spending_over_time(parsed_csv, 1)
+    yesterday_total = get_spending_over_time(parsed_csv, 1, 1)
 
-    return render_template("index.html", session=session)
+    date_unprocessed = datetime.datetime.today()
+    current_date = datetime.datetime.strftime(date_unprocessed, "%-m/%d/%Y")
+
+    spending_today = list()
+
+    for record in parsed_csv:
+        if record[0].split(' ', maxsplit=1)[0] == current_date:
+            spending_today.append(record)
+
+    data = [total, yesterday_total]
+
+    return render_template("daily.html", session=session, spending_today=spending_today, data=data)
 
 @app.route('/auth')
 def auth():
@@ -152,3 +188,14 @@ def auth():
         session['skey'] = str(request.args.get('skey'))
 
     return redirect('/')
+
+@app.route('/switch_theme')
+def switch_theme():
+    """Closed URL for switching the site's theme."""
+    if 'theme' not in session:
+        session['theme'] = "light"
+    elif session['theme'] == "light":
+        session['theme'] = "dark"
+    else:
+        session['theme'] = "light"
+    return "nothing"
