@@ -1,4 +1,9 @@
 {% extends 'base.html' %}
+
+{% block theme_url %}
+    '/switch_theme?wason=/'
+{% endblock %}
+
 {% block bodytag %}
 {% if 'theme' in session %}
     {% if session['theme'] == "light" %}
@@ -17,7 +22,7 @@
                 <div class="container" style="text-align:center">
                     {% if not 'skey' in session %}
                     <h5 style="color:red">No key detected, need to authenticate:</h5>
-                    <a class="btn btn-outline-danger" href="https://tigerspend.rit.edu/login.php?wason=http://quantumrefuge.student.rit.edu:8080/auth">VALIDATE</a>
+                    <a class="btn btn-outline-danger" href="{{ redir }}">VALIDATE</a>
                     {% endif %}
                 </div>
             </div>

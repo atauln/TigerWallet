@@ -134,7 +134,7 @@ def landing():
 
     parsed_csv = verify_skey_integrity()
     if 'skey' not in session:
-        return render_template("index.html", session=session)
+        return render_template("index.html", session=session, redir=f"https://tigerspend.rit.edu/login.php?wason={request.url_root}auth")
 
     date_unprocessed = datetime.datetime.today()
     current_date = datetime.datetime.strftime(date_unprocessed, "%-m/%d/%Y")
@@ -192,10 +192,12 @@ def auth():
 @app.route('/switch_theme')
 def switch_theme():
     """Closed URL for switching the site's theme."""
+    print (session['theme'])
     if 'theme' not in session:
         session['theme'] = "light"
     elif session['theme'] == "light":
         session['theme'] = "dark"
     else:
         session['theme'] = "light"
-    return "nothing"
+    
+    return redirect(request.args.get('wason'))

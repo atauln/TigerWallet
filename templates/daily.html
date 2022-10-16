@@ -2,6 +2,10 @@
 
 {% extends 'base.html' %}
 
+{% block theme_url %}
+    '/switch_theme?wason=/daily'
+{% endblock %}
+
 {% block bodytag %}
 {% if 'theme' in session %}
     {% if session['theme'] == "light" %}
