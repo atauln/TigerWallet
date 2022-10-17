@@ -5,6 +5,7 @@ in a more efficient and well-tailored manner.
 
 import datetime
 
+import os
 import csv
 import requests
 
@@ -14,7 +15,7 @@ app = Flask(__name__)
 
 colors = ["ff6666", "f8f1ff", "023c40"] # primary, foreground, background
 
-app.secret_key = 'haha_gamer'
+app.secret_key = os.urandom(16)
 
 def verify_skey_integrity():
     """Verifies the integrity of the session variables.
