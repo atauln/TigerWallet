@@ -17,7 +17,7 @@
         .container-fluid {
             margin-left:auto;
             margin-right:auto;
-            display: inline-block
+            display: inline-block;
         }
         .row {
             margin: 15px;
@@ -27,8 +27,8 @@
             height: fit-content;
         }
         .col-sm-12 {
-            margin-left: 10;
-            margin-right: 10;
+            margin-left: auto;
+            margin-right: auto;
             margin-top: 25px;
             padding:0;
         }
@@ -71,7 +71,12 @@
             </ul>
         </div>
     </nav>
-    {% block content %}
-    {% endblock %}
+
+    <div class="container-fluid">
+        <div class="col-sm-12" style="max-width:1050px">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </div>
 
 </body>
