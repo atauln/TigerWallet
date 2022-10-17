@@ -201,5 +201,5 @@ def switch_theme():
         session['theme'] = "dark"
     else:
         session['theme'] = "light"
-    
+
     return redirect(request.args.get('wason'))
