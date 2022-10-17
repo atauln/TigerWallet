@@ -7,14 +7,16 @@ import datetime
 
 import csv
 import requests
+from bs4 import BeautifulSoup
 
 from flask import Flask, render_template, session, redirect, request
 
 app = Flask(__name__)
 
-colors = ["ff6666", "f8f1ff", "023c40"] # primary, foreground, background
+colors = ["ff6666", "f8f1ff", "023c40"]  # primary, foreground, background
 
 app.secret_key = 'haha_gamer'
+
 
 def verify_skey_integrity():
     """Verifies the integrity of the session variables.
@@ -23,6 +25,7 @@ def verify_skey_integrity():
 
     # validate that it is returning an actual csv, and not an HTML
     parsed_csv = [['', '', '', ''], ['', '', '', '']]
+
     if 'skey' in session:
         if 'dining_id' in session:
             parsed_csv = get_user_spending(session['dining_id'], 2221, 'csv')
@@ -43,16 +46,14 @@ def verify_skey_integrity():
         else:
             # iterate until you find the account id that works for dining dollars
             # locates meal plan in use
-
-            dining_id = 53
-            while parsed_csv[1][2] == '':
-                dining_id += 1
-                parsed_csv = get_user_spending(dining_id, 2221, 'csv')
+            dining_id = get_user_plans()
+            parsed_csv = get_user_spending(dining_id, 2221, 'csv')
 
             # save the meal plan to your session
             session['dining_id'] = dining_id
 
         # invalidate session, retry authentication
+        # OR THROW ERROR
         if len(parsed_csv) < 4:
             session.pop('skey')
             session.pop('dining_id')
@@ -81,14 +82,31 @@ def get_user_spending(acct: int, semester: int, format_output: str, cid=105):
             'cid': cid
         }
 
-        response = requests.get("https://tigerspend.rit.edu/statementdetail.php", payload)
+        response = requests.get(
+            "https://tigerspend.rit.edu/statementdetail.php", payload)
 
         # decode the CSV and turn into an array of records
+        # Eventually you should check if the response is in HTML because the login probably didn't work
         lines = response.content.decode(response.encoding).splitlines()
         reader = csv.reader(lines)
         return list(reader)
     else:
         return None
+
+
+def get_user_plans(cid=105):
+    if 'skey' in session:
+        # send TigerSpend the payload details and get CSV back
+        payload = {
+            'skey': session['skey'],
+            'cid': cid
+        }
+    response = requests.get(
+        "https://tigerspend.rit.edu/statementnew.php", payload)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    options = soup.find(id="select-account").find_all('option')
+    return options[0].attrs['value']
+
 
 def get_daily_spending(csv_file):
     """Process CSV output from TigerSpend into array of total costs per day"""
@@ -106,6 +124,7 @@ def get_daily_spending(csv_file):
         except IndexError:
             continue
     return daily_spent
+
 
 def get_spending_over_time(csv_file, days=7, offset=0):
     """Return cost over a certain pay period."""
@@ -127,6 +146,7 @@ def get_spending_over_time(csv_file, days=7, offset=0):
             continue
     return money_spent
 
+
 @app.route('/')
 def landing():
     """Method run upon landing on the main page."""
@@ -147,18 +167,22 @@ def landing():
     date_format = "%m/%d/%Y"
 
     # get the number of days until the end of the semester
-    delta = datetime.datetime.strptime(last_date, date_format) - datetime.datetime.strptime(current_date, date_format)
+    delta = datetime.datetime.strptime(
+        last_date, date_format) - datetime.datetime.strptime(current_date, date_format)
 
     #starting_balance = float(parsed_csv[-1][3]) - float(parsed_csv[-1][2])
     current_balance = float(parsed_csv[1][3])
 
     # get daily budget based off balance in account yesterday
-    daily_budget = round(((current_balance + get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
+    daily_budget = round(
+        ((current_balance + get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
 
     # packaging up data to send to template
-    data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1), get_spending_over_time(parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1)]
+    data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1), get_spending_over_time(
+        parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1)]
 
     return render_template("index.html", session=session, data=data, records=parsed_csv)
+
 
 @app.route('/daily')
 def daily():
@@ -183,6 +207,7 @@ def daily():
 
     return render_template("daily.html", session=session, spending_today=spending_today, data=data)
 
+
 @app.route('/auth')
 def auth():
     """Method for authenticating on /auth"""
@@ -191,6 +216,7 @@ def auth():
         session['skey'] = str(request.args.get('skey'))
 
     return redirect('/')
+
 
 @app.route('/switch_theme')
 def switch_theme():
@@ -203,3 +229,7 @@ def switch_theme():
         session['theme'] = "light"
 
     return redirect(request.args.get('wason'))
+
+
+if __name__ == '__main__':
+    app.run()
