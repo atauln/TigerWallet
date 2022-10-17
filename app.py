@@ -3,14 +3,13 @@ Flask application created to show users their TigerSpend account information
 in a more efficient and well-tailored manner.
 """
 
-import datetime
-
-import os
 import csv
+import datetime
+import os
+
 import requests
 from bs4 import BeautifulSoup
-
-from flask import Flask, render_template, session, redirect, request
+from flask import Flask, redirect, render_template, request, session
 
 app = Flask(__name__)
 
@@ -55,7 +54,7 @@ def verify_skey_integrity():
 
         # invalidate session, retry authentication
         # OR THROW ERROR
-        if len(parsed_csv) < 4:
+        if len(parsed_csv[0]) < 4:
             session.pop('skey')
             session.pop('dining_id')
             return verify_skey_integrity()
@@ -96,6 +95,9 @@ def get_user_spending(acct: int, semester: int, format_output: str, cid=105):
 
 
 def get_user_plans(cid=105):
+    """Get a list of all the user's plans and return the first one.
+
+    TODO expand to return a list of the plans for '/accounts'"""
     if 'skey' in session:
         # send TigerSpend the payload details and get CSV back
         payload = {
