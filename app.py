@@ -149,6 +149,38 @@ def get_spending_over_time(csv_file, days=7, offset=0):
             continue
     return money_spent
 
+def process_location(raw_location):
+    """Takes the location code from the CSV and converts it to a 
+    more readable format."""
+    locations = {
+        "WELLNESS": "Vending Machine (Wellness)",
+        "BEVERAGE": "Vending Machine (Beverage)",
+        "SNACK": "Vending Machine (Snack)",
+        "STARBUCKS": "Vending Machine (StarBucks)",
+        "Beanz": "Beanz",
+        "Commons": "The Commons",
+        "Gracie": "Gracie's",
+        "Corner": "The Corner Store",
+        "Ctrl Alt DELi": "Ctrl Alt DELi",
+        "Crossroads": "C&M at The Crossroads",
+        "RITz": "RITz Sports Zone",
+        "Market": "Global Village Market",
+        "Underground": "Sol's Underground",
+        "Tablet": "Food Trucks",
+        "Midnight": "Midnight Oil",
+        "Grind": "The College Grind",
+        "Concessions": "Campus Concessions",
+        "Cantina": "GV Cantina & Grille",
+        "Artesano": "Artesano Bakery & Cafe",
+    } # TODO implement ondemand checking seperately
+
+    for item in locations.items():
+        if item[0] in raw_location:
+            if "OnDemand" in raw_location:
+                return item[0] + " (Online)"
+            else:
+                return item[0]
+
 
 @app.route('/')
 def landing():
@@ -205,13 +237,34 @@ def daily():
     date_unprocessed = datetime.datetime.today()
     current_date = datetime.datetime.strftime(date_unprocessed, "%-m/%d/%Y")
 
+    last_date = "12/14/2022"
+
+    date_format = "%m/%d/%Y"
+
     spending_today = list()
+
 
     for record in parsed_csv:
         if record[0].split(' ', maxsplit=1)[0] == current_date:
+            record[1] = process_location(record[1])
+            record[2] = float(str(record[2]).strip('-'))
+            record[3] = float(record[3])
             spending_today.append(record)
+    
+    print (spending_today)
 
-    data = [total, yesterday_total]
+    delta = datetime.datetime.strptime(
+        last_date, date_format) - datetime.datetime.strptime(current_date, date_format)
+
+    daily_budget = round(
+        ((float(parsed_csv[1][3]) - get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
+
+    data = [total, daily_budget, yesterday_total]
+
+
+    
+
+
 
     print(f"GET {request.remote_addr} @ {request.url} -> Skey found! Displaying page.")
 

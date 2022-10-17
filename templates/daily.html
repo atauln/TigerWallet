@@ -8,19 +8,41 @@
 
 {% if 'theme' in session %}
     {% block styles %}
-    "{{ url_for('static', './styles/{{ session["theme"] }}.css')}}"
+    {% set css_url = './styles/' + session["theme"] + '.css' %}
+    {{ url_for('static', filename=css_url) }}
     {% endblock %}
 {% endif %}
 
 {% block content %}
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-sm-12">
-                <div class="col-sm-3 section" style="margin:10px">
-                    <h3 class="heading">MONEY SPENT TODAY</h3>
-                    <h1 class="primary">${{data[0]|round(2)}}</h1>
-                </div>
-            </div>
+<div class="row">
+    <div class="col-sm-1"></div>
+    <div class="col-sm-3 section">
+        <h5 class="heading">TODAY</h5>
+        <div style="display:flex;justify-content:center;align-items:center;height:88px;">
+            <h3 class="primary">${{data[0]|round(2)}}</h3>  
         </div>
     </div>
+    <div class="col-sm-1"></div>
+    <div class="col-sm-2 section">
+        <h5 class="heading">USAGE</h5>
+        <div style="display:flex;justify-content:center;align-items:center;height:82px;">
+            {% if data[1] > data[0] %}
+                <h4 class="primary green">{{(100 + ((data[0] - data[1]) / data[1]) * 100)|round(2)}}%</h4>
+            {% else %}
+                <h4 class="primary red">{{(100 + ((data[0] - data[1]) / data[1]) * 100)|round(2)}}%</h4>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-sm-1"></div>
+    <div class="col-sm-3 section">
+        <h5 class="heading">DAILY BUDGET</h5>
+        <div style="display:flex;justify-content:center;align-items:center;height:88px;">
+            <h3 class="primary">${{data[1]|round(2)}}</h3>
+        </div>
+    </div>
+    <div class="col-sm-1"></div>
+</div>
+<div class="row">
+    <h6 class="foreground" style="margin-top:600px">What're you doing here?</h6>
+</div>
 {% endblock %}
