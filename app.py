@@ -132,6 +132,9 @@ def landing():
     """Method run upon landing on the main page."""
     # first check if the skey is already contained in the session
 
+    if 'theme' not in session:
+        session['theme'] = "dark"
+
     parsed_csv = verify_skey_integrity()
     if 'skey' not in session:
         return render_template("index.html", session=session, redir=f"https://tigerspend.rit.edu/login.php?wason={request.url_root}auth")
@@ -192,9 +195,8 @@ def auth():
 @app.route('/switch_theme')
 def switch_theme():
     """Closed URL for switching the site's theme."""
-    print (session['theme'])
     if 'theme' not in session:
-        session['theme'] = "light"
+        session['theme'] = "dark"
     elif session['theme'] == "light":
         session['theme'] = "dark"
     else:
