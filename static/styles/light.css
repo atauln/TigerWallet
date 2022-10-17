@@ -1,0 +1,28 @@
+.foreground {
+    color: #1B998B;
+    text-align:center;
+}
+.primary {
+    color: #ff6666;
+    text-align:center;
+}
+.green {
+    color: #01b636
+}
+.red {
+    color: #ff0000
+}
+body {
+    background-size: cover;
+    background-color: #ebf7f6;
+}
+.heading {
+    margin-top:10px;
+    background-color:#1B998B;
+    color:white;
+    text-align:center
+}
+.section {
+    border:4px inset #1B998B;
+    vertical-align: middle;
+}

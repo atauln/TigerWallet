@@ -180,14 +180,15 @@ def landing():
 
     # get daily budget based off balance in account yesterday
     daily_budget = round(
-        ((current_balance + get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
+        ((current_balance - get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
+
 
     # packaging up data to send to template
     data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1), 
     get_spending_over_time(parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1)]
 
     print(f"GET {request.remote_addr} @ {request.url} -> Skey found! Displaying page.")
-    return render_template("index.html", session=session, data=data, records=parsed_csv)
+    return render_template("index.html", colors=colors, session=session, data=data, records=parsed_csv)
 
 
 @app.route('/daily')
