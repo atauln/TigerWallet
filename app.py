@@ -153,13 +153,15 @@ def get_spending_over_time(csv_file, days=7, offset=0):
 @app.route('/')
 def landing():
     """Method run upon landing on the main page."""
-    # first check if the skey is already contained in the session
 
     if 'theme' not in session:
         session['theme'] = "dark"
 
     parsed_csv = verify_skey_integrity()
+
+    # check if the skey is contained within the session
     if 'skey' not in session:
+        print(f"GET {request.remote_addr} @ {request.url} -> No 'skey' located in session...")
         return render_template("index.html", session=session, redir=f"https://tigerspend.rit.edu/login.php?wason={request.url_root}auth")
 
     date_unprocessed = datetime.datetime.today()
@@ -181,9 +183,10 @@ def landing():
         ((current_balance + get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
 
     # packaging up data to send to template
-    data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1), get_spending_over_time(
-        parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1)]
+    data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1), 
+    get_spending_over_time(parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1)]
 
+    print(f"GET {request.remote_addr} @ {request.url} -> Skey found! Displaying page.")
     return render_template("index.html", session=session, data=data, records=parsed_csv)
 
 
@@ -192,6 +195,7 @@ def daily():
     """Method run upon opening the Daily tab"""
     parsed_csv = verify_skey_integrity()
     if 'skey' not in session:
+        print(f"GET {request.remote_addr} @ {request.url} -> No 'skey' located in session...")
         return redirect('/')
 
     total = get_spending_over_time(parsed_csv, 1)
@@ -208,6 +212,8 @@ def daily():
 
     data = [total, yesterday_total]
 
+    print(f"GET {request.remote_addr} @ {request.url} -> Skey found! Displaying page.")
+
     return render_template("daily.html", session=session, spending_today=spending_today, data=data)
 
 
@@ -216,7 +222,10 @@ def auth():
     """Method for authenticating on /auth"""
     # authenticate user based on redirect from tigerspend with skey enclosed as arg
     if 'skey' in request.args.keys():
+        print(f"GET {request.remote_addr} @ {request.url} -> Provided a valid 'skey'")
         session['skey'] = str(request.args.get('skey'))
+    else:
+        print(f"GET {request.remote_addr} @ {request.url} -> Did not provide an 'skey'")
 
     return redirect('/')
 
@@ -231,6 +240,7 @@ def switch_theme():
     else:
         session['theme'] = "light"
 
+    print(f"GET {request.remote_addr} @ {request.url} -> Switched theme to {session['theme']}! Redirecting user to {request.args.get('wason')}...")
     return redirect(request.args.get('wason'))
 
 
