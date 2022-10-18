@@ -102,17 +102,46 @@ def get_user_plans(cid=105):
     """Get a list of all the user's plans and return the first one.
 
     TODO expand to return a list of the plans for '/accounts'"""
-    if 'skey' in session:
-        # send TigerSpend the payload details and get CSV back
-        payload = {
-            'skey': session['skey'],
-            'cid': cid
-        }
+
+    if 'skey' not in session:
+        return 0
+
+    payload = {
+        'skey': session['skey'],
+        'cid': cid
+    }
     response = requests.get(
         "https://tigerspend.rit.edu/statementnew.php", payload)
     soup = BeautifulSoup(response.content, 'html.parser')
     options = soup.find(id="select-account").find_all('option')
     return options[0].attrs['value']
+
+def get_account_info(cid=105):
+    """Get the user's name from their account page."""
+
+    if 'skey' not in session:
+        return ""
+    
+    payload = {
+        'skey': session['skey'],
+        'cid': cid
+    }
+    response = requests.get(
+        "https://tigerspend.rit.edu/statementnew.php", payload)
+    
+    soup = BeautifulSoup(response.content, 'html.parser')
+    options = soup.find("div", {"class": "jsa_account-info"}).find_all("b")
+    
+    name = options[0].getText().split(" ")
+
+    account_data = [
+        str(name[0][0]).lower() + str(name[1]).lower() + str(options[1]).strip('x'), # account_id
+        name[0], # first_name
+        name[1], # last_name
+        str(options[1]).strip('x')] # account_number
+
+    return account_data
+
 
 
 def get_daily_spending(csv_file):
@@ -181,9 +210,9 @@ def process_location(raw_location):
     for item in locations.items():
         if item[0] in raw_location:
             if "OnDemand" in raw_location:
-                return item[0] + " (Online)"
+                return item[1] + " (Online)"
             else:
-                return item[0]
+                return item[1]
 
 
 @app.route('/')
@@ -227,7 +256,7 @@ def landing():
 
     # packaging up data to send to template
     data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1),
-    get_spending_over_time(parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1)]
+    get_spending_over_time(parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1), get_account_info()]
 
     print(f"GET {request.remote_addr} @ {request.url} -> Skey found! Displaying page.")
     return render_template("index.html", colors=colors, session=session, data=data, records=parsed_csv)
@@ -236,6 +265,9 @@ def landing():
 @app.route('/daily')
 def daily():
     """Method run upon opening the Daily tab"""
+    if 'theme' not in session:
+        session['theme'] = "dark"
+
     parsed_csv = verify_skey_integrity()
     if 'skey' not in session:
         print(f"GET {request.remote_addr} @ {request.url} -> No 'skey' located in session...")
@@ -256,12 +288,11 @@ def daily():
 
     for record in parsed_csv:
         if record[0].split(' ', maxsplit=1)[0] == current_date:
+            record[0] = str(record[0]).split(" ")[1]
             record[1] = process_location(record[1])
             record[2] = float(str(record[2]).strip('-'))
             record[3] = float(record[3])
             spending_today.append(record)
-    
-    print (spending_today)
 
     delta = datetime.datetime.strptime(
         last_date, date_format) - datetime.datetime.strptime(current_date, date_format)

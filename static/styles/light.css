@@ -32,3 +32,8 @@ body {
     border:4px inset #1B998B;
     vertical-align: middle;
 }
+.table-bordered {
+    border-color: #1B998B;
+    border-style: inset;
+    border-width: 4px;
+}
