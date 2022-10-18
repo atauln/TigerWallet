@@ -37,7 +37,7 @@ def post_to_pings(subject_uuid, username, body):
 
     # TODO set up env vars
     headers = {
-        "Authorization": "Bearer " + os.getenv("PINGS_TOKEN")
+        "Authorization": "Bearer " + str(os.getenv("PINGS_TOKEN"))
     }
 
     payload = {
@@ -45,7 +45,10 @@ def post_to_pings(subject_uuid, username, body):
         "body": body
     }
 
-    response = requests.post(f"https://pings.csh.rit.edu/service/route/{subject_uuid}/ping", headers=headers, json=payload)
+    try:
+        response = requests.post(f"https://pings.csh.rit.edu/service/route/{subject_uuid}/ping", headers=headers, json=payload)
+    except requests.exceptions.ChunkedEncodingError:
+        return 0
 
     return response.status_code
 
