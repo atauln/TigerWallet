@@ -6,6 +6,7 @@ in a more efficient and well-tailored manner.
 import csv
 import datetime
 import os
+import time
 
 import requests
 from bs4 import BeautifulSoup
@@ -16,6 +17,9 @@ app = Flask(__name__)
 colors = ["ff6666", "f8f1ff", "023c40"]  # primary, foreground, background
 
 app.secret_key = os.urandom(16)
+
+os.environ['TZ'] = "America/New_York"
+time.tzset()
 
 
 def verify_skey_integrity():
@@ -171,8 +175,8 @@ def process_location(raw_location):
         "Grind": "The College Grind",
         "Concessions": "Campus Concessions",
         "Cantina": "GV Cantina & Grille",
-        "Artesano": "Artesano Bakery & Cafe",
-    } # TODO implement ondemand checking seperately
+        "Artesano": "Artesano Bakery & Cafe"
+    }
 
     for item in locations.items():
         if item[0] in raw_location:
@@ -205,7 +209,7 @@ def landing():
 
     # get the number of days until the end of the semester
     delta = datetime.datetime.strptime(
-        last_date, date_format) - datetime.datetime.strptime(current_date, date_format)
+        last_date, date_format) - date_unprocessed
 
     #starting_balance = float(parsed_csv[-1][3]) - float(parsed_csv[-1][2])
     current_balance = float(parsed_csv[1][3])
@@ -214,9 +218,15 @@ def landing():
     daily_budget = round(
         ((current_balance - get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
 
+    if daily_budget == 0:
+        session.pop("skey")
+        session.pop("dining_id")
+        print(f"GET {request.remote_addr} @ {request.url} -> " +
+            "Daily budget was equivalent to 0, invalidating session")
+        return redirect('/')
 
     # packaging up data to send to template
-    data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1), 
+    data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1),
     get_spending_over_time(parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1)]
 
     print(f"GET {request.remote_addr} @ {request.url} -> Skey found! Displaying page.")
@@ -261,8 +271,12 @@ def daily():
 
     data = [total, daily_budget, yesterday_total]
 
-
-    
+    if daily_budget == 0:
+        session.pop("skey")
+        session.pop("dining_id")
+        print(f"GET {request.remote_addr} @ {request.url} -> " +
+            "Daily budget was equivalent to 0, invalidating session")
+        return redirect('/')
 
 
 
