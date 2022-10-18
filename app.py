@@ -22,6 +22,11 @@ os.environ['TZ'] = "America/New_York"
 time.tzset()
 
 
+def log_to_console(message):
+    """Simple function to send message to the console
+    in a consistent manner."""
+    print(f"GET {request.remote_addr} @ {request.url} -> {message}")
+
 def verify_skey_integrity():
     """Verifies the integrity of the session variables.
 
@@ -121,17 +126,17 @@ def get_account_info(cid=105):
 
     if 'skey' not in session:
         return ""
-    
+
     payload = {
         'skey': session['skey'],
         'cid': cid
     }
     response = requests.get(
         "https://tigerspend.rit.edu/statementnew.php", payload)
-    
+
     soup = BeautifulSoup(response.content, 'html.parser')
     options = soup.find("div", {"class": "jsa_account-info"}).find_all("b")
-    
+
     name = options[0].getText().split(" ")
 
     account_data = [
@@ -183,7 +188,7 @@ def get_spending_over_time(csv_file, days=7, offset=0):
     return money_spent
 
 def process_location(raw_location):
-    """Takes the location code from the CSV and converts it to a 
+    """Takes the location code from the CSV and converts it to a
     more readable format."""
     locations = {
         "WELLNESS": "Vending Machine (Wellness)",
@@ -226,7 +231,7 @@ def landing():
 
     # check if the skey is contained within the session
     if 'skey' not in session:
-        print(f"GET {request.remote_addr} @ {request.url} -> No 'skey' located in session...")
+        log_to_console("No 'skey' located in session...")
         return render_template("index.html", session=session, redir=f"https://tigerspend.rit.edu/login.php?wason={request.url_root}auth")
 
     date_unprocessed = datetime.datetime.today()
@@ -250,7 +255,7 @@ def landing():
     if daily_budget == 0:
         session.pop("skey")
         session.pop("dining_id")
-        print(f"GET {request.remote_addr} @ {request.url} -> " +
+        log_to_console("" +
             "Daily budget was equivalent to 0, invalidating session")
         return redirect('/')
 
@@ -258,7 +263,7 @@ def landing():
     data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1),
     get_spending_over_time(parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1), get_account_info()]
 
-    print(f"GET {request.remote_addr} @ {request.url} -> Skey found! Displaying page.")
+    log_to_console("Skey found! Displaying page.")
     return render_template("index.html", colors=colors, session=session, data=data, records=parsed_csv)
 
 
@@ -270,7 +275,7 @@ def daily():
 
     parsed_csv = verify_skey_integrity()
     if 'skey' not in session:
-        print(f"GET {request.remote_addr} @ {request.url} -> No 'skey' located in session...")
+        log_to_console("No 'skey' located in session...")
         return redirect('/')
 
     total = get_spending_over_time(parsed_csv, 1)
@@ -305,13 +310,13 @@ def daily():
     if daily_budget == 0:
         session.pop("skey")
         session.pop("dining_id")
-        print(f"GET {request.remote_addr} @ {request.url} -> " +
+        log_to_console("" +
             "Daily budget was equivalent to 0, invalidating session")
         return redirect('/')
 
 
 
-    print(f"GET {request.remote_addr} @ {request.url} -> Skey found! Displaying page.")
+    log_to_console("Skey found! Displaying page.")
 
     return render_template("daily.html", session=session, spending_today=spending_today, data=data)
 
@@ -321,10 +326,10 @@ def auth():
     """Method for authenticating on /auth"""
     # authenticate user based on redirect from tigerspend with skey enclosed as arg
     if 'skey' in request.args.keys():
-        print(f"GET {request.remote_addr} @ {request.url} -> Provided a valid 'skey'")
+        log_to_console("Provided a valid 'skey'")
         session['skey'] = str(request.args.get('skey'))
     else:
-        print(f"GET {request.remote_addr} @ {request.url} -> Did not provide an 'skey'")
+        log_to_console("Did not provide an 'skey'")
 
     return redirect('/')
 
@@ -339,7 +344,7 @@ def switch_theme():
     else:
         session['theme'] = "light"
 
-    print(f"GET {request.remote_addr} @ {request.url} -> Switched theme to {session['theme']}! Redirecting user to {request.args.get('wason')}...")
+    log_to_console("Switched theme to {session['theme']}! Redirecting user to {request.args.get('wason')}...")
     return redirect(request.args.get('wason'))
 
 
