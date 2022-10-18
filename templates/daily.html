@@ -62,6 +62,11 @@
                     <td>{{ record[2] }}</td>
                 </tr>
                 {% endfor %}
+                {% if spending_today|length == 0 %}
+                <tr>
+                    <th scope="row" colspan="6">No entries found...</th>
+                </tr>
+                {% endif %}
             </tbody>
         </div>
     </div>

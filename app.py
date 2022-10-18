@@ -53,7 +53,6 @@ def verify_skey_integrity():
                 return []
 
         else:
-            # iterate until you find the account id that works for dining dollars
             # locates meal plan in use
             dining_id = get_user_plans()
             parsed_csv = get_user_spending(dining_id, 2221, 'csv')
@@ -120,6 +119,7 @@ def get_user_plans(cid=105):
     soup = BeautifulSoup(response.content, 'html.parser')
     options = soup.find(id="select-account").find_all('option')
     return options[0].attrs['value']
+
 
 def get_account_info(cid=105):
     """Get the user's name from their account page."""
