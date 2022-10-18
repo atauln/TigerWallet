@@ -10,11 +10,16 @@ import time
 
 import requests
 from bs4 import BeautifulSoup
+import dotenv
 from flask import Flask, redirect, render_template, request, session
+
+dotenv.load_dotenv()
 
 app = Flask(__name__)
 
 colors = ["ff6666", "f8f1ff", "023c40"]  # primary, foreground, background
+
+PING_TOKEN = "" # this will NOT be set here, moving to env vars very soon
 
 app.secret_key = os.urandom(16)
 
@@ -26,6 +31,23 @@ def log_to_console(message):
     """Simple function to send message to the console
     in a consistent manner."""
     print(f"GET {request.remote_addr} @ {request.url} -> {message}")
+
+def post_to_pings(subject_uuid, username, body):
+    """POST to pings.csh.rit.edu (created by Ethan Fergussen | @ethanf108)"""
+
+    # TODO set up env vars
+    headers = {
+        "Authorization": "Bearer " + os.getenv("PINGS_TOKEN")
+    }
+
+    payload = {
+        "username": username,
+        "body": body
+    }
+
+    response = requests.post(f"https://pings.csh.rit.edu/service/route/{subject_uuid}/ping", headers=headers, json=payload)
+
+    return response.status_code
 
 def verify_skey_integrity():
     """Verifies the integrity of the session variables.
@@ -103,9 +125,9 @@ def get_user_spending(acct: int, semester: int, format_output: str, cid=105):
 
 
 def get_user_plans(cid=105):
-    """Get a list of all the user's plans and return the first one.
+    """Get a list of all the user's plans and return the first one."""
 
-    TODO expand to return a list of the plans for '/accounts'"""
+    # TODO expand to return a list of the plans for '/accounts'
 
     if 'skey' not in session:
         return 0
