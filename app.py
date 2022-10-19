@@ -17,8 +17,6 @@ dotenv.load_dotenv()
 
 app = Flask(__name__)
 
-colors = ["ff6666", "f8f1ff", "023c40"]  # primary, foreground, background
-
 PING_TOKEN = "" # this will NOT be set here, moving to env vars very soon
 
 app.secret_key = os.urandom(16)
