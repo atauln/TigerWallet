@@ -1,0 +1,53 @@
+<!-- Variables needed: session -->
+
+{% extends 'base.html' %}
+
+{% block title %}Landing{% endblock %}
+
+{% block theme_url %}
+    '/switch_theme?wason=/purchases'
+{% endblock %}
+
+{% if 'theme' in session %}
+    {% block styles %}
+    {% set css_url = './styles/' + session["theme"] + '.css' %}
+    {{ url_for('static', filename=css_url) }}
+    {% endblock %}
+{% endif %}
+
+{% block content %}
+
+<div class="row" style="margin-top:20px">
+    <div class="table-responsive" style="margin-right:auto; margin-left:auto">
+        {% if session['theme'] == "light" %}
+        <table class="table table-hover table-bordered table-striped">
+        {% else %}
+        <table class="table table-hover table-bordered table-striped table-dark"></div>
+        {% endif %}
+            <thead>
+                <th scope="col">Timestamp</th>
+                <th scope="col" colspan="4">Location</th>
+                <th scope="col">Payment</th>
+            </thead>
+            <tbody>
+                {% for date, list in spending.items() %}
+                <tr>
+                    <th scope="row" colspan="6" style="text-align:center">{{ date }}</th>
+                </tr>
+                {% for record in list %}
+                <tr>
+                    <td scope="row">{{ (record[0]).split(" ")[1] }}</th>
+                    <td colspan="4">{{ record[1] }}</td>
+                    <td>${{ record[2] }}</td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <th scope="row" colspan="6">No entries found...</th>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </div>
+    </div>
+</div>
+{% endblock %}

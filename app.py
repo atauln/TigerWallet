@@ -278,8 +278,7 @@ def landing():
     if daily_budget == 0:
         session.pop("skey")
         session.pop("dining_id")
-        log_to_console("" +
-            "Daily budget was equivalent to 0, invalidating session")
+        log_to_console("Daily budget was equivalent to 0, invalidating session")
         return redirect('/')
 
     # packaging up data to send to template
@@ -287,12 +286,12 @@ def landing():
     get_spending_over_time(parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1), get_account_info()]
 
     log_to_console("Skey found! Displaying page.")
-    return render_template("index.html", colors=colors, session=session, data=data, records=parsed_csv)
+    return render_template("index.html", session=session, data=data, records=parsed_csv)
 
 
-@app.route('/daily')
+@app.route('/purchases')
 def daily():
-    """Method run upon opening the Daily tab"""
+    """Method run upon opening the Purchases tab"""
     if 'theme' not in session:
         session['theme'] = "dark"
 
@@ -306,42 +305,54 @@ def daily():
 
     date_unprocessed = datetime.datetime.today()
     current_date = datetime.datetime.strftime(date_unprocessed, "%-m/%d/%Y")
-
     last_date = "12/14/2022"
 
     date_format = "%m/%d/%Y"
 
-    spending_today = list()
+    spending = {}
+
+    sum = 0
+    count = 0
+
+    spending_instance = list()
+    last_date = ""
 
 
     for record in parsed_csv:
-        if record[0].split(' ', maxsplit=1)[0] == current_date:
-            record[0] = str(record[0]).split(" ")[1]
-            record[1] = process_location(record[1])
-            record[2] = float(str(record[2]).strip('-'))
-            record[3] = float(record[3])
-            spending_today.append(record)
+        if record[0] == "Date":
+            continue
+        elif last_date == "":
+            last_date = str(record[0]).split(" ")[0]
+        record[1] = process_location(record[1])
+        record[2] = float(str(record[2]).strip('-'))
+        record[3] = float(record[3])
+        sum += record[2]
+        count += 1
 
-    delta = datetime.datetime.strptime(
-        last_date, date_format) - datetime.datetime.strptime(current_date, date_format)
+        if str(record[0]).split(" ")[0] not in spending:
+            spending[last_date] = spending_instance.copy()
+            spending_instance.clear()
+            last_date = str(record[0]).split(" ")[0]
+        
+        spending_instance.append(record)
+
+
+    delta = datetime.datetime.strptime(last_date, date_format) - datetime.datetime.strptime(current_date, date_format)
 
     daily_budget = round(
         ((float(parsed_csv[1][3]) - get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
 
-    data = [total, daily_budget, yesterday_total]
-
     if daily_budget == 0:
         session.pop("skey")
         session.pop("dining_id")
-        log_to_console("" +
-            "Daily budget was equivalent to 0, invalidating session")
+        log_to_console("Daily budget was equivalent to 0, invalidating session")
         return redirect('/')
 
 
 
     log_to_console("Skey found! Displaying page.")
 
-    return render_template("daily.html", session=session, spending_today=spending_today, data=data)
+    return render_template("purchases.html", session=session, spending=spending)
 
 
 @app.route('/auth')
@@ -354,7 +365,11 @@ def auth():
     else:
         log_to_console("Did not provide an 'skey'")
 
-    return redirect('/')
+    if request.args.get('wason')[0] != '/':
+        log_to_console(f"Detected external link for wason: {request.args.get('wason')} | Redirecting to '/'")
+        return redirect('/')
+
+    return redirect(request.args.get('wason'))
 
 
 @app.route('/switch_theme')
@@ -367,8 +382,17 @@ def switch_theme():
     else:
         session['theme'] = "light"
 
-    log_to_console("Switched theme to {session['theme']}! Redirecting user to {request.args.get('wason')}...")
+    log_to_console(f"Switched theme to {session['theme']}! Redirecting user to {request.args.get('wason')}...")
+
+    if request.args.get('wason')[0] != '/':
+        log_to_console(f"Detected external link for wason: {request.args.get('wason')} | Redirecting to '/'")
+        return redirect('/')
+
     return redirect(request.args.get('wason'))
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return redirect('/')
 
 
 if __name__ == '__main__':
