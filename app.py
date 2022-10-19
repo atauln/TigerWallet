@@ -365,11 +365,14 @@ def auth():
     else:
         log_to_console("Did not provide an 'skey'")
 
-    if request.args.get('wason') != '/':
-        log_to_console(f"Detected external link for wason: {request.args.get('wason')} | Redirecting to '/'")
-        return redirect('/')
+    if 'wason' in request.args:
+        if str(request.args.get('wason'))[0] == '/':
+            return redirect(request.args.get('wason'))
 
-    return redirect(request.args.get('wason'))
+        log_to_console(f"Detected external link for wason: {str(request.args.get('wason'))} | Redirecting to '/'")
+        
+    return redirect('/')
+    
 
 
 @app.route('/switch_theme')
@@ -384,9 +387,10 @@ def switch_theme():
 
     log_to_console(f"Switched theme to {session['theme']}! Redirecting user to {request.args.get('wason')}...")
 
-    if request.args.get('wason') != '/':
-        log_to_console(f"Detected external link for wason: {request.args.get('wason')} | Redirecting to '/'")
-        return redirect('/')
+    if 'wason' in request.args:
+        if str(request.args.get('wason'))[0] != '/':
+            log_to_console(f"Detected external link for wason: {str(request.args.get('wason'))} | Redirecting to '/'")
+            return redirect('/')
 
     return redirect(request.args.get('wason'))
 
