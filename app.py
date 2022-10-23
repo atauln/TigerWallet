@@ -281,10 +281,7 @@ def landing():
         ((current_balance - get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
 
     if daily_budget == 0:
-        session.pop("skey")
-        session.pop("dining_id")
-        log_to_console("Daily budget was equivalent to 0, invalidating session")
-        return redirect('/')
+        daily_budget = 1
 
     # packaging up data to send to template
     data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1),
@@ -346,10 +343,7 @@ def daily():
         ((float(parsed_csv[1][3]) - get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
 
     if daily_budget == 0:
-        session.pop("skey")
-        session.pop("dining_id")
-        log_to_console("Daily budget was equivalent to 0, invalidating session")
-        return redirect('/')
+        daily_budget = 1
 
 
 
