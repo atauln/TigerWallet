@@ -18,6 +18,7 @@ dotenv.load_dotenv()
 app = Flask(__name__)
 
 PING_TOKEN = "" # this will NOT be set here, moving to env vars very soon
+CSH_CLIENT = "tigerwallet"
 
 app.secret_key = os.urandom(16)
 
@@ -232,7 +233,11 @@ def process_location(raw_location):
         "Grind": "The College Grind",
         "Concessions": "Campus Concessions",
         "Cantina": "GV Cantina & Grille",
-        "Artesano": "Artesano Bakery & Cafe"
+        "Artesano": "Artesano Bakery & Cafe",
+        "Brick City": "Brick City Cafe",
+        "Nathan": "Nathan's Soup & Salad",
+        "Jerry": "Ben & Jerry's",
+        "Petals": "RIT Inn Petals"
     }
 
     for item in locations.items():
@@ -314,30 +319,28 @@ def daily():
     sum = 0
     count = 0
 
-    spending_instance = list()
-    last_date = ""
+    last_date = str(parsed_csv[-1][0]).split(" ")[0]
 
 
-    for record in parsed_csv:
-        if record[0] == "Date":
-            continue
-        elif last_date == "":
-            last_date = str(record[0]).split(" ")[0]
-        record[1] = process_location(record[1])
-        record[2] = float(str(record[2]).strip('-'))
-        record[3] = float(record[3])
-        sum += record[2]
-        count += 1
-
-        if str(record[0]).split(" ")[0] not in spending:
-            spending[last_date] = spending_instance.copy()
-            spending_instance.clear()
-            last_date = str(record[0]).split(" ")[0]
+    
         
-        spending_instance.append(record)
 
 
     delta = datetime.datetime.strptime(last_date, date_format) - datetime.datetime.strptime(current_date, date_format)
+    for i in range(-delta.days):
+        date = datetime.datetime.today() - datetime.timedelta(days=i)
+        date_processed = date.strftime("%-m/%d/%Y")
+        if date_processed not in spending:
+            spending[date_processed] = list() 
+        for purchase in parsed_csv:
+            if str(purchase[0]).split(" ")[0] == date_processed:
+                purchase[1] = process_location(purchase[1])
+                purchase[2] = float(purchase[2]) * -1
+                purchase[3] = float(purchase[3])
+                sum += purchase[2]
+                count += 1
+                spending_list = spending[date_processed]
+                spending_list.append(purchase)
 
     daily_budget = round(
         ((float(parsed_csv[1][3]) - get_spending_over_time(parsed_csv, 1)) / delta.days), 2)
