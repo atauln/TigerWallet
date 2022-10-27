@@ -38,7 +38,7 @@
                 <tr>
                     <td scope="row">{{ (record[0]).split(" ")[1] }}</th>
                     <td colspan="4">{{ record[1] }}</td>
-                    <td>${{ record[2] }}</td>
+                    <td>{{ "${:,.2f}".format(record[2]) }}</td>
                 </tr>
                 {% endfor %}
                 {% else %}

@@ -19,18 +19,9 @@
     <div class="row" style="height:fit-content">
         <div class="container section">
             <h3 class="heading">
-                Current Balance ({{ data[5][1] + " " + data[5][2] }} |
-                <span>
-                    {% if session['dining_id'] == 54 %}
-                        Orange Plan)
-                    {% elif session['dining_id'] == 55 %}
-                        Tiger Plan)
-                    {% else %}
-                        Unrecognized)
-                    {% endif %}
-                </span>
+                Current Balance ({{ data[5][1] + " " + data[5][2] }} | {{ plan_name }})
             </h3>
-            <h1 class="primary" style="font-size:7vw">${{data[0]|round(2)}}</h1>
+            <h1 class="primary" style="font-size:7vw">{{"${:,.2f}".format(data[0])}}</h1>
             <h6 class="foreground" style="font-size:20px">({{((data[0] * 100 / records[-1][2]|float)|round(2))}}%)</h6>
         </div>
     </div>
@@ -39,7 +30,7 @@
         <div class="col-sm-3 section">
             <h5 class="heading">TODAY</h5>
             <div style="display:flex;justify-content:center;align-items:center;height:88px;">
-                <h3 class="primary">${{data[2]|round(2)}}</h3>  
+                <h3 class="primary">{{"${:,.2f}".format(data[2])}}</h3>  
             </div>
         </div>
         <div class="col-sm-1"></div>
@@ -57,7 +48,7 @@
         <div class="col-sm-3 section">
             <h5 class="heading">DAILY BUDGET</h5>
             <div style="display:flex;justify-content:center;align-items:center;height:88px;">
-                <h3 class="primary">${{data[1]|round(2)}}</h3>
+                <h3 class="primary">{{"${:,.2f}".format(data[1])}}</h3>
             </div>
         </div>
         <div class="col-sm-1"></div>
@@ -67,7 +58,7 @@
         <div class="col-sm-3 section">
             <h5 class="heading">PAST WEEK</h5>
             <div style="display:flex;justify-content:center;align-items:center;height:88px;">
-                <h3 class="primary">${{data[3]|round(2)}}</h3>
+                <h3 class="primary">{{"${:,.2f}".format(data[3])}}</h3>
             </div>
         </div>
         <div class="col-sm-1"></div>
@@ -85,7 +76,7 @@
         <div class="col-sm-3 section">
             <h5 class="heading">WEEKLY BUDGET</h5>
             <div style="display:flex;justify-content:center;align-items:center;height:88px;">
-                <h3 class="primary">${{(data[1] * 7)|round(2)}}</h3>
+                <h3 class="primary">{{"${:,.2f}".format(data[1] * 7)}}</h3>
             </div>
         </div>
         <div class="col-sm-1"></div>
@@ -95,7 +86,7 @@
         <div class="col-sm-3 section">
             <h5 class="heading">PAST 30 DAYS</h5>
             <div style="display:flex;justify-content:center;align-items:center;height:88px;">
-                <h3 class="primary">${{data[4]|round(2)}}</h3>
+                <h3 class="primary">{{"${:,.2f}".format(data[4])}}</h3>
             </div>
         </div>
         <div class="col-sm-1"></div>
@@ -113,7 +104,7 @@
         <div class="col-sm-3 section">
             <h5 class="heading">MONTHLY BUDGET</h5>
             <div style="display:flex;justify-content:center;align-items:center;height:88px;">
-                <h3 class="primary">${{(data[1] * 30)|round(2)}}</h3>
+                <h3 class="primary">{{"${:,.2f}".format(data[1] * 30)}}</h3>
             </div>
         </div>
         <div class="col-sm-1"></div>
