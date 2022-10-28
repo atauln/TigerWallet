@@ -10,7 +10,8 @@ import time
 import dotenv
 from flask import Flask, redirect, render_template, request, session
 
-from helpers import *
+from helpers import verify_skey_integrity, log_to_console, get_datetimes
+from helpers import get_spending_over_time, get_account_info, process_location, get_meal_plan_name
 
 dotenv.load_dotenv()
 
@@ -21,28 +22,32 @@ os.environ['TZ'] = "America/New_York"
 time.tzset()
 
 def set_session_value(key, value):
+    """Sets a session value for the user session"""
     session[key] = value
 
 def check_session_value(key):
+    """Check to see if a value is in the user's session"""
     return key in session
 
 def get_session_value(key):
+    """Return a value from the session"""
     return session[key]
 
 def get_session():
+    """Get the session object"""
     return session
 
 @app.route('/')
 def landing():
     """Method run upon landing on the main page."""
 
-    parsed_csv, session = verify_skey_integrity()
-    
+    parsed_csv, _ = verify_skey_integrity()
 
     # check if the skey is contained within the session
     if not check_session_value('skey'):
         log_to_console("No 'skey' located in session...")
-        return render_template("index.html", session=get_session(), redir=f"https://tigerspend.rit.edu/login.php?wason={request.url_root}auth")
+        return render_template("index.html", session=get_session(),
+            redir=f"https://tigerspend.rit.edu/login.php?wason={request.url_root}auth")
 
     _, currentdate, lastdate = get_datetimes()
 
@@ -60,18 +65,21 @@ def landing():
         daily_budget = 1
 
     # packaging up data to send to template
-    data = [current_balance, daily_budget, get_spending_over_time(parsed_csv, 1),
-    get_spending_over_time(parsed_csv, 7, 1), get_spending_over_time(parsed_csv, 30, 1), get_account_info()]
+    data = [current_balance, daily_budget,
+        get_spending_over_time(parsed_csv, 1),
+        get_spending_over_time(parsed_csv, 7, 1),
+        get_spending_over_time(parsed_csv, 30, 1),
+        get_account_info()]
 
-    
-    return render_template("index.html", session=get_session(), data=data, records=parsed_csv, plan_name=get_meal_plan_name(session['dining_id']))
+    return render_template("index.html", session=get_session(), data=data,
+        records=parsed_csv, plan_name=get_meal_plan_name(session['dining_id']))
 
 
 @app.route('/purchases')
 def daily():
     """Method run upon opening the Purchases tab"""
 
-    parsed_csv, session = verify_skey_integrity()
+    parsed_csv, _ = verify_skey_integrity()
     if not check_session_value('skey'):
         log_to_console("No 'skey' located in session...")
         return redirect('/')
@@ -80,7 +88,7 @@ def daily():
 
     spending = {}
 
-    sum = 0
+    a_sum = 0
     count = 0
 
     delta = currentdate - firstdate
@@ -88,13 +96,13 @@ def daily():
         date = datetime.datetime.today() - datetime.timedelta(days=i)
         date_processed = date.strftime("%-m/%d/%Y")
         if date_processed not in spending:
-            spending[date_processed] = list() 
+            spending[date_processed] = []
         for purchase in parsed_csv:
-            if str(purchase[0]).split(" ")[0] == date_processed:
+            if str(purchase[0]).split(" ", maxsplit=1)[0] == date_processed:
                 purchase[1] = process_location(purchase[1])
                 purchase[2] = float(purchase[2]) * -1
                 purchase[3] = float(purchase[3])
-                sum += purchase[2]
+                a_sum += purchase[2]
                 count += 1
                 spending_list = spending[date_processed]
                 spending_list.append(purchase)
@@ -112,7 +120,7 @@ def daily():
 def accounts():
     """Method run upon opening the Accounts tab"""
 
-    parsed_csv, session = verify_skey_integrity()
+    verify_skey_integrity()
     if not check_session_value('skey'):
         log_to_console("No 'skey' located in session...")
         return redirect('/')
@@ -137,8 +145,9 @@ def auth():
         if str(request.args.get('wason'))[0] == '/':
             return redirect(request.args.get('wason'))
 
-        log_to_console(f"Detected external link for wason: {str(request.args.get('wason'))} | Redirecting to '/'")
-        
+        log_to_console("Detected external link for wason: " +
+            f"{str(request.args.get('wason'))} | Redirecting to '/'")
+
     return redirect('/')
 
 
@@ -154,13 +163,15 @@ def switch_theme():
 
     if 'wason' in request.args:
         if str(request.args.get('wason'))[0] != '/':
-            log_to_console(f"Detected external link for wason: {str(request.args.get('wason'))} | Redirecting to '/'")
+            log_to_console("Detected external link for wason:" +
+                f"{str(request.args.get('wason'))} | Redirecting to '/'")
             return redirect('/')
 
     return redirect(request.args.get('wason'))
 
 @app.errorhandler(404)
-def page_not_found(e):
+def page_not_found():
+    """Redirect to landing if page not found"""
     return redirect('/')
 
 if __name__ == '__main__':
