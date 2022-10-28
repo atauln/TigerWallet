@@ -6,6 +6,8 @@ import csv
 from bs4 import BeautifulSoup
 import app
 
+# dictionary of datetimes for all semesters
+# select the currect semester with evironmental variables
 semester_times = {
     2221: {
         "start": datetime.datetime(2022, 7, 1, 0, 0, 0),
@@ -18,6 +20,7 @@ semester_times = {
 }
 
 def get_datetimes():
+    """Returns datetimes for the current semester"""
     return (
         semester_times[int(os.getenv("CURRENT_SEMESTER"))]["start"], 
         datetime.datetime.today(), 
@@ -25,6 +28,7 @@ def get_datetimes():
     )
 
 def get_date_strings():
+    """Returns formatted date strings for the current semester"""
     return (
         semester_times[int(os.getenv("CURRENT_SEMESTER"))]["start"].strftime("%-m/%d/%Y"), 
         datetime.datetime.today().strftime("%-m/%d/%Y"), 
@@ -241,6 +245,7 @@ def get_spending_over_time(csv_file, days=7, offset=0):
             continue
     return money_spent
 
+
 def process_location(raw_location):
     """Takes the location code from the CSV and converts it to a
     more readable format."""
@@ -267,7 +272,8 @@ def process_location(raw_location):
         "Brick City": "Brick City Cafe",
         "Nathan": "Nathan's Soup & Salad",
         "Jerry": "Ben & Jerry's",
-        "Petals": "RIT Inn Petals"
+        "Petals": "RIT Inn Petals",
+        "Deposit": "Deposit"
     }
 
     for item in locations.items():
