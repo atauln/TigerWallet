@@ -55,7 +55,7 @@ This project utilizes RIT's TigerSpend API to receive purchase information for u
 :heavy_check_mark: Account detection and switching\
 :heavy_check_mark: Purchase history
 
-# To be implemented: #
+## To be implemented: ##
 :x: Notifications\
 :x: Balance warnings\
 :x: Balance predictions\
@@ -101,7 +101,8 @@ $ podman run latest
 This project is under license from GNU. For more details, see the [LICENSE](LICENSE) file.
 
 
-Made with :heart: by <a href="https://github.com/atauln" target="_blank">Ata Noor</a>
+Made with :heart: by <a href="https://github.com/atauln" target="_blank">Ata Noor</a>\
 (Please don't sue me RIT)
-&#xa0;
+
+
 <a href="#top">Back to top</a>
