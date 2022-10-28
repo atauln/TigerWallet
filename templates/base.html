@@ -63,11 +63,13 @@
                             Account
                         </button>
                         <ul class="dropdown-menu">
+                            {% if 'skey' in session %}
                             {% for plan in session['meal_plans'] %}
                             <a class="dropdown-item" href="/accounts?plan={{ plan[0] }}">{{ plan[1] }}</a>
                             {% else %}
                             <a class="dropdown-item" href="#">N/A</a>
                             {% endfor %}
+                            {% endif %}
                         </ul>
                     </div>
                 </li>
