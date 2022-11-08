@@ -254,7 +254,6 @@ def get_user_spending(acct: int, format_output: str, cid=105):
             )
             if statement_date + datetime.timedelta(minutes=10) < datetime.datetime.now():
                 session.pop('statement_date')
-                session.pop('statement')
                 if check_db_value('statement_date'):
                     update_db_value('statement_date', '')
                     update_db_value('spending', '')
@@ -266,9 +265,8 @@ def get_user_spending(acct: int, format_output: str, cid=105):
             if statement_date + datetime.timedelta(minutes=10) < datetime.datetime.now():
                 if check_session_value('statement_date'):
                     session.pop('statement_date')
-                    session.pop('statement')
                 update_db_value('spending', '')
-                update_db_value('statement', '')
+                update_db_value('statement_date', '')
         if not check_db_value('spending') or int(get_db_value('dining_id')[0]) != acct:
             # send TigerSpend the payload details and get CSV back
             # only done if the statement is not already in the session
