@@ -197,16 +197,12 @@ def verify_skey_integrity():
                 return None, get_session()
 
             for plan in plans:
-                plan_id = int(plan.attrs['value'])
+                plan_id = int(plan[0])
                 if get_meal_plan_name(plan_id) == "Meal Plan":
                     # save the meal plan to your session
                     log_to_console(f"Found meal plan {plan_id}")
                     set_session_value('dining_id', plan_id)
                     break
-            else:
-                log_to_console("Could not find a meal plan")
-                set_session_value("dining_id", plans[0].attrs['value'])
-                update_db_value('dining_id', plans[0].attrs['value'])
 
         if check_session_value('dining_id'):
             spending = get_user_spending(get_session_value('dining_id'), 'csv')
@@ -243,7 +239,7 @@ def verify_skey_integrity():
     return spending, get_session()
 
 
-def get_user_spending(acct: int, format_output: str, cid=105, upload_to_db=True):
+def get_user_spending(acct: int, format_output: str, cid=105):
     """Return user spending information."""
 
     # check the semester ID and update start and end dates accordingly
@@ -259,7 +255,7 @@ def get_user_spending(acct: int, format_output: str, cid=105, upload_to_db=True)
             if statement_date + datetime.timedelta(minutes=10) < datetime.datetime.now():
                 session.pop('statement_date')
                 session.pop('statement')
-        if not check_db_value('spending'):
+        if not check_db_value('spending') or int(get_db_value('dining_id')[0]) != acct:
             # send TigerSpend the payload details and get CSV back
             # only done if the statement is not already in the session
             payload = {
@@ -295,6 +291,49 @@ def get_user_spending(acct: int, format_output: str, cid=105, upload_to_db=True)
         return json.loads(back)
     return None
 
+def force_retrieve_spending(acct: int, format_output: str, cid = 105):
+    """Return user spending information.
+    This should be used very carefully, as it does not check for values."""
+
+    # check the semester ID and update start and end dates accordingly
+    start_date = semester_times[int(os.getenv("CURRENT_SEMESTER"))]["start"].strftime("%Y-%m-%d")
+    end_date = semester_times[int(os.getenv("CURRENT_SEMESTER"))]["end"].strftime("%Y-%m-%d")
+
+    # send TigerSpend the payload details and get CSV back
+    # only done if the statement is not already in the session
+    payload = {
+        'skey': session['skey'],
+        'format': format_output,
+        'startdate': start_date,
+        'enddate': end_date,
+        'acct': acct,
+        'cid': cid
+    }
+
+    response = requests.get(
+        "https://tigerspend.rit.edu/statementdetail.php",
+        payload
+    )
+
+    lines = response.content.decode(response.encoding).splitlines()
+    reader = csv.reader(lines)
+
+    set_session_value('statement_date',
+        datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
+    update_db_value('statement_date', get_session_value('statement_date'))
+    update_db_value(
+        'spending',
+        str(list(reader))
+            .replace("Sol's", "Sols")
+            .replace("Jerry's", "Jerrys")
+            .replace("Gracie's", "Gracies")
+            .replace("Nathan's", "Nathans")
+            .replace("\"", "'")
+    )
+
+    back =  str(get_db_value('spending')[0]).replace("\\", "").replace("'", "\"")
+    return json.loads(back)
+
 
 def get_user_plans(cid=105):
     """Get a list of all the user's plans and return the first one."""
@@ -318,7 +357,8 @@ def get_user_plans(cid=105):
         return None
     set_session_value('meal_plans', [[plan.attrs['value'],
         get_meal_plan_name(int(plan.attrs['value']))] for plan in options])
-    return options
+
+    return get_session_value('meal_plans')
 
 
 def get_account_info(cid=105):
@@ -456,7 +496,7 @@ def landing():
     delta = lastdate - currentdate
 
     #starting_balance = float(spending[-1][3]) - float(spending[-1][2])
-    current_balance = float(spending[1][3])
+    current_balance = float(list(spending)[1][3])
 
     # get daily budget based off balance in account yesterday
     daily_budget = round(
@@ -479,7 +519,6 @@ def landing():
         first_name]
 
     fill_user()
-    print(get_session())
 
     return render_template("index.html", session=get_session(), data=data,
         records=spending, plan_name=get_meal_plan_name(session['dining_id']))
@@ -507,7 +546,7 @@ def daily():
         date_processed = date.strftime("%-m/%d/%Y")
         if date_processed not in spending_a:
             spending_a[date_processed] = []
-        for purchase in spending:
+        for purchase in list(spending):
             if str(purchase[0]).split(" ", maxsplit=1)[0] == date_processed:
                 purchase[1] = process_location(purchase[1])
                 purchase[2] = float(purchase[2]) * -1
@@ -533,8 +572,8 @@ def stats():
     sincefirst = currentdate - firstdate
     totaldays = enddate - firstdate
 
-    balance = float(spending[1][3])
-    deposit = float(str(spending[-1][2]).strip("-"))
+    balance = float(list(spending)[1][3])
+    deposit = float(str(list(spending)[-1][2]).strip("-"))
     recommended_balance = (deposit / totaldays.days) * sincefirst.days
 
     money_spent_per_day = {}
@@ -560,6 +599,8 @@ def accounts():
     if 'plan' in request.args:
         set_session_value('dining_id', int(request.args.get("plan")))
         update_db_value('dining_id', int(request.args.get("plan")))
+        force_retrieve_spending(int(request.args.get("plan")), 'csv')
+
     return redirect('/')
 
 @app.route('/auth')
@@ -621,11 +662,8 @@ def switch_theme():
     else:
         set_session_value('theme', 'light')
 
-    print ('upd')
     if check_session_value('skey'):
         update_db_value('theme', get_session_value('theme'))
-
-    print ('done')
 
     if 'wason' in request.args:
         if str(request.args.get('wason'))[0] != '/':
@@ -638,6 +676,7 @@ def switch_theme():
 @app.errorhandler(404)
 def page_not_found(ex):
     """Redirect to landing if page not found"""
+    print (str(ex))
     return redirect('/')
 
 if __name__ == '__main__':
