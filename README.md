@@ -1,5 +1,5 @@
 <div align="center" id="top"> 
-  <img src="./static/favicon.ico" alt="Tigerwallet" width="100px" height="100px" />
+  <img src="./static/icons/icon-dark.png" alt="Tigerwallet" width="200px" height="200px" />
 
   &#xa0;
 

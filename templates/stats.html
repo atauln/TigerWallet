@@ -1,5 +1,3 @@
-<!-- Variables needed: session -->
-
 {% extends 'base.html' %}
 
 {% block title %}Stats{% endblock %}
@@ -13,79 +11,31 @@
     {% set css_url = './styles/' + session["theme"] + '.css' %}
     {{ url_for('static', filename=css_url) }}
     {% endblock %}
+    {% block icon %}
+    {{ url_for('static', filename='icons/icon-'+ session['theme'] + '.png' )}}
+    {% endblock %}
+    {% block favicon %}
+    {{ url_for('static', filename='icon-' + session['theme'] + '.ico') }}
+    {% endblock %}
 {% endif %}
 
 {% block content %}
-<div class="row">
-    <div class="col-sm-1"></div>
-    <div class="col-sm-3 section">
-        <h5 class="heading">TODAY</h5>
-        <div style="display:flex;justify-content:center;align-items:center;height:88px;">
-            <h3 class="primary">${{data[0]|round(2)}}</h3>  
+<div class="row" style="margin-top:20px; min-height:0px; margin-bottom:0px">
+    <div class="container section">
+        <div class="progress" style="margin-top:10px">
+            <div class="progress-bar progress-bar-animated" role="progressbar" style="width:{{ '{:,.2f}'.format((deposit - balance)/deposit * 100) }}%" aria-valuenow="{{ balance }}" aria-valuemin="0" aria-valuemax="{{ deposit }}">{{ "${:,.2f}".format(deposit - balance) }}</div>
+            <div style="text-align:center; margin:auto">{{ "${:,.2f}".format(balance) }}</div>
         </div>
-    </div>
-    <div class="col-sm-1"></div>
-    <div class="col-sm-2 section">
-        <h5 class="heading">USAGE</h5>
-        <div style="display:flex;justify-content:center;align-items:center;height:82px;">
-            {% if data[1] > data[0] %}
-                <h4 class="primary green">{{(100 + ((data[0] - data[1]) / data[1]) * 100)|round(2)}}%</h4>
-            {% else %}
-                <h4 class="primary red">{{(100 + ((data[0] - data[1]) / data[1]) * 100)|round(2)}}%</h4>
-            {% endif %}
-        </div>
-    </div>
-    <div class="col-sm-1"></div>
-    <div class="col-sm-3 section">
-        <h5 class="heading">DAILY BUDGET</h5>
-        <div style="display:flex;justify-content:center;align-items:center;height:88px;">
-            <h3 class="primary">${{data[1]|round(2)}}</h3>
-        </div>
-    </div>
-    <div class="col-sm-1"></div>
-</div>
-
-<div class="row">
-    <div class="col-sm-1"></div>
-    <div class="col-sm-4 section">
-        <h5 class="heading">AVG PURCHASE</h5>
-        <div style="display:flex;justify-content:center;align-items:center;height:88px;">
-            <h3 class="primary">${{ data[3]|round(2) }}</h3>
-        </div>
-    </div>
-    <div class="col-sm-2"></div>
-    <div class="col-sm-4 section">
-
-    </div>
-    <div class="col-sm-2"></div>
-</div>
-
-<div class="row">
-    <div class="table-responsive" style="margin-right:auto; margin-left:auto">
-        {% if session['theme'] == "light" %}
-        <table class="table table-hover table-bordered table-striped">
-        {% else %}
-        <table class="table table-hover table-bordered table-striped table-dark"></div>
-        {% endif %}
-            <thead>
-                <th scope="col">Timestamp</th>
-                <th scope="col" colspan="4">Location</th>
-                <th scope="col">Payment</th>
-            </thead>
-            <tbody>
-                {% for record in spending_today %}
-                <tr>
-                    <th scope="row">{{ record[0] }}</th>
-                    <td colspan="4">{{ record[1] }}</td>
-                    <td>{{ record[2] }}</td>
-                </tr>
-                {% endfor %}
-                {% if spending_today|length == 0 %}
-                <tr>
-                    <th scope="row" colspan="6">No entries found...</th>
-                </tr>
-                {% endif %}
-            </tbody>
+        <div class="row" style="margin-top:10px; font-size:1rem">
+            <div class="col-sm-1 foreground" style="text-align:left">
+                {{ '{:,.2f}'.format(((deposit - balance)/deposit) * 100) }}%
+            </div>
+            <div class="col-sm-10" style="text-align:center">
+                <h1 class="primary" style="font-size:7vw">{{"${:,.2f}".format(balance)}}</h1>
+            </div>
+            <div class="col-sm-1 foreground" style="text-align:right">
+                {{ '{:,.2f}'.format((balance/deposit) * 100) }}%
+            </div>
         </div>
     </div>
 </div>

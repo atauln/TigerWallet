@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <header>
     <title>{% block title %}{% endblock %} | TigerWallet</title>
-
-    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="shortcut icon" href="
+    {% block favicon %}
+    {{ url_for('static', filename='icon-dark.ico') }}
+    {% endblock %}
+    ">
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/js/bootstrap.bundle.min.js"></script>
@@ -36,6 +39,11 @@
             margin:auto;
             text-align: center;
         }
+        .progress {
+            --bs-progress-height: 1.5rem;
+            --bs-progress-border-radius:0.4rem;
+            --bs-gutter-x: 0rem
+        }
     </style>
     <link rel="stylesheet" href="
     {% block styles %}
@@ -44,9 +52,17 @@
 </header>
 <body>
     
-    <nav class="navbar navbar-expand-sm" style="border-bottom:2px solid black; background-color:#1B998B">
+    <nav class="navbar navbar-expand-sm" style="border-bottom:2px solid black">
+        <div>
+            <a href="/"><img src="
+                {% block icon %}
+                {{ url_for('static', filename='icons/icon-dark.png' )}}
+                {% endblock %}" alt="TigerWallet logo" width="48px" height="48px"
+                style="margin-left:12px; border:2px solid black">
+            </a>
+        </div>
         <div class="container-fluid">
-            <ul class="navbar-nav">
+            <ul class="navbar-nav"> 
                 <li class="nav-item">
                     <a class="nav-link theme-color" href="/">Landing</a>
                 </li>

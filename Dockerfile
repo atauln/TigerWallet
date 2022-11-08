@@ -6,6 +6,7 @@ ADD ./ /app
 COPY ./requirements.txt requirements.txt
 RUN apt-get -yq update && \
     pip install --no-cache-dir -r requirements.txt
+RUN npm i chart.js
 
 COPY . .
 

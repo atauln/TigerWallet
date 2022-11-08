@@ -11,6 +11,12 @@
     {% set css_url = './styles/' + session["theme"] + '.css' %}
     {{ url_for('static', filename=css_url) }}
     {% endblock %}
+    {% block icon %}
+    {{ url_for('static', filename='icons/icon-'+ session['theme'] + '.png' )}}
+    {% endblock %}
+    {% block favicon %}
+    {{ url_for('static', filename='icon-' + session['theme'] + '.ico') }}
+    {% endblock %}
 {% endif %}
 
 
@@ -19,10 +25,10 @@
     <div class="row" style="height:fit-content">
         <div class="container section">
             <h3 class="heading">
-                Current Balance ({{ data[5][1] + " " + data[5][2] }} | {{ plan_name }})
+                Current Balance ({{ data[5] }} | {{ plan_name }})
             </h3>
             <h1 class="primary" style="font-size:7vw">{{"${:,.2f}".format(data[0])}}</h1>
-            <h6 class="foreground" style="font-size:20px">({{((data[0] * 100 / records[-1][2]|float)|round(2))}}%)</h6>
+            <h6 class="foreground" style="font-size:20px">({{((data[0] * 100 / records[-1][2]|float)|round(2))}}% remaining)</h6>
         </div>
     </div>
     <div class="row">
@@ -113,7 +119,7 @@
     <div class="row" style="height:fit-content; min-height:0px">
         <div class="col">
             <div class="container" style="text-align:center; margin-left:auto; margin-right:auto">
-                <h5 style="color:red">No key detected, need to authenticate:</h5>
+                <h5 class="red">No key detected, need to authenticate:</h5>
                 <a class="btn btn-outline-danger" href="{{ redir }}">VALIDATE</a>
             </div>
         </div>

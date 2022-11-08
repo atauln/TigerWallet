@@ -13,6 +13,12 @@
     {% set css_url = './styles/' + session["theme"] + '.css' %}
     {{ url_for('static', filename=css_url) }}
     {% endblock %}
+    {% block icon %}
+    {{ url_for('static', filename='icons/icon-'+ session['theme'] + '.png' )}}
+    {% endblock %}
+    {% block favicon %}
+    {{ url_for('static', filename='icon-' + session['theme'] + '.ico') }}
+    {% endblock %}
 {% endif %}
 
 {% block content %}
@@ -31,9 +37,11 @@
             </thead>
             <tbody>
                 {% for date, list in spending.items() %}
+                {% if list|length != 0 %}
                 <tr>
-                    <th scope="row" colspan="6" style="text-align:center">{{ date }}</th>
+                    <th scope="row" colspan="6" style="text-align:center" class="datehead">{{ date }}</th>
                 </tr>
+                {% endif %}
                 {% for record in list %}
                 <tr>
                     <td scope="row">{{ (record[0]).split(" ")[1] }}</th>

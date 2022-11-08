@@ -1,13 +1,21 @@
 .foreground {
-    color: #1B998B;
+    color: #09332e;
     text-align:center;
 }
 .primary {
-    color: #ff6666;
+    color: #72C0B7;
     text-align:center;
 }
 .theme-color {
     color: #ebf7f6
+}
+.progress {
+    --bs-progress-bar-bg: #1B998B;
+    --bs-progress-bar-color: #ebf7f6;
+}
+.datehead {
+    --bs-table-striped-bg:#dff3f1;
+    --bs-table-bg:#dff3f1;
 }
 .white {
     color: #ebf7f6;
@@ -36,4 +44,7 @@ body {
     border-color: #1B998B;
     border-style: inset;
     border-width: 4px;
+}
+.navbar {
+    background-color: #1B998B;
 }
