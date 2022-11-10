@@ -26,11 +26,9 @@
 
 <!-- Status -->
 
-<!-- <h4 align="center"> 
-	🚧  Tigerwallet 🚀 Under construction...  🚧
-</h4> 
-
-<hr> -->
+<h3 align="center"> 
+	🚀 <a href="https://www.tigerwallet.cs.house">Demo</a> 🚀
+</h3>
 
 <p align="center">
   <a href="#dart-about">About</a> &#xa0; | &#xa0; 
