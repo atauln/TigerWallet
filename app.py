@@ -153,12 +153,11 @@ def check_db_value(key):
         return False
     if values is None or values == [] or values == "" or values == 0:
         return False
-    if len(values) > 0:
-        if values[0] == '':
+    if values[0] == '':
+        return False
+    if len(values[0]) > 0:
+        if values[0][0] == '':
             return False
-        if len(values[0]) > 0:
-            if values[0][0] == '':
-                return False
     return True
 
 def get_db_value(key):
@@ -174,7 +173,6 @@ def load_spending(acct_id):
         )
         deadline = statement_date + datetime.timedelta(minutes=10)
         if deadline < datetime.datetime.now() or acct_id != get_db_value('dining_id'):
-            print ("regenerating statement")
             update_db_value(
                 'spending',
                 str(force_retrieve_spending(get_db_value('skey'), acct_id))
@@ -185,9 +183,11 @@ def load_spending(acct_id):
         return None
 
     spending = json.loads(str(get_db_value('spending')).replace("\\", "").replace("'", "\""))
-    if len(spending[0]) != 4:
+    if len(spending) == 0:
         get_session().pop('id')
-    if spending[1][3] == '':
+    elif len(spending[0]) != 4:
+        get_session().pop('id')
+    elif spending[1][3] == '':
         return load_spending(json.loads(get_db_value('plans'))[0][0])
 
     return spending
@@ -258,7 +258,7 @@ def get_user_spending(acct: int, format_output: str, cid=105):
                 get_session_value('statement_date'),
                 "%m/%d/%Y %H:%M:%S"
             )
-            if statement_date + datetime.timedelta(minutes=10) < datetime.datetime.now():
+            if statement_date + datetime.timedelta(minutes=3) < datetime.datetime.now():
                 session.pop('statement_date')
                 if check_db_value('statement_date'):
                     update_db_value('statement_date', '')
@@ -340,7 +340,6 @@ def force_retrieve_spending(skey, acct, format_output = 'csv', cid = 105):
     try:
         json_result = json.loads(result)
     except json.JSONDecodeError:
-        print ("skey must be invalid")
         return '[]'
 
     return json_result
@@ -565,7 +564,8 @@ def daily():
                 spending_list = spending_a[date_processed]
                 spending_list.append(purchase)
 
-    return render_template("purchases.html", session=get_session(), spending=spending_a)
+    return render_template("purchases.html", session=get_session(), spending=spending_a,
+            plans=json.loads(get_db_value('plans')))
 
 @app.route('/stats')
 def stats():
@@ -604,7 +604,8 @@ def stats():
 
     return render_template("stats.html", session=get_session(),
         balance=balance, deposit=deposit,
-        recommended_balance = recommended_balance)
+        recommended_balance = recommended_balance,
+        plans=json.loads(get_db_value('plans')))
 
 @app.route('/accounts')
 def accounts():
@@ -628,13 +629,13 @@ def auth():
     if 'skey' in request.args.keys():
         skey = str(request.args.get('skey'))
         current_datetime = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+        account_info = get_account_info(skey)
+        set_session_value('id', account_info[0])
 
         if check_db_value('id'):
             update_db_value('skey', skey)
             update_db_value('last_signed_in', current_datetime)
         else:
-            account_info = get_account_info(skey)
-            set_session_value('id', account_info[0])
             plans = get_user_plans(skey)
             spending = force_retrieve_spending(skey, plans[0][0], 'csv')
             sql = "INSERT INTO account_data (id, first_name, last_name, plans, skey, spending, "
