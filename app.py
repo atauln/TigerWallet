@@ -46,7 +46,8 @@ def get_session():
     """Get the session object"""
     return session
 
-def regenerate_skeys():
+def extend_skey():
+    """Extends the lifetime of an skey"""
     sql = 'SELECT id, skey FROM account_data'
 
     mycursor = mydb.cursor()
@@ -171,7 +172,8 @@ def load_spending(acct_id):
             get_db_value('statement_date'),
             "%m/%d/%Y %H:%M:%S"
         )
-        if statement_date + datetime.timedelta(minutes=10) < datetime.datetime.now() or acct_id != get_db_value('dining_id'):
+        deadline = statement_date + datetime.timedelta(minutes=10)
+        if deadline < datetime.datetime.now() or acct_id != get_db_value('dining_id'):
             print ("regenerating statement")
             update_db_value(
                 'spending',
@@ -183,7 +185,6 @@ def load_spending(acct_id):
         return None
 
     spending = json.loads(str(get_db_value('spending')).replace("\\", "").replace("'", "\""))
-
     if len(spending[0]) != 4:
         get_session().pop('id')
     if spending[1][3] == '':
@@ -226,8 +227,6 @@ def post_to_pings(subject_uuid, username, body):
 def verify_skey_integrity(skey):
     """Verifies the integrity of the skey."""
 
-    start = time.perf_counter()
-
     payload = {
         'cid': 105,
         'skey': skey
@@ -240,8 +239,6 @@ def verify_skey_integrity(skey):
         "https://tigerspend.rit.edu/statementdetail.php",
         payload
     )
-
-    print (time.perf_counter() - start)
 
     if len(response.history) != 0:
         return False
@@ -343,7 +340,8 @@ def force_retrieve_spending(skey, acct, format_output = 'csv', cid = 105):
     try:
         json_result = json.loads(result)
     except json.JSONDecodeError:
-        return ''
+        print ("skey must be invalid")
+        return '[]'
 
     return json_result
 
@@ -482,7 +480,6 @@ def process_location(raw_location):
 @app.route('/')
 def landing():
     """Method run upon landing on the main page."""
-    start = time.perf_counter()
     # give theme value if not already given
     if not check_session_value('theme'):
         set_session_value('theme', 'dark')
@@ -520,9 +517,6 @@ def landing():
         get_spending_over_time(spending, 7, 1),
         get_spending_over_time(spending, 30, 1),
         first_name]
-
-    end = time.perf_counter()
-    print (end - start)
 
     return render_template("index.html", session=get_session(), data=data,
         records=spending, plan_name=get_meal_plan_name(get_db_value('dining_id')),
@@ -633,16 +627,16 @@ def auth():
 
     if 'skey' in request.args.keys():
         skey = str(request.args.get('skey'))
-        account_info = get_account_info(skey)
-        set_session_value('id', account_info[0])
-        plans = get_user_plans(skey)
-        spending = force_retrieve_spending(skey, plans[0][0], 'csv')
         current_datetime = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 
         if check_db_value('id'):
             update_db_value('skey', skey)
+            update_db_value('last_signed_in', current_datetime)
         else:
-            print ('making new db user???')
+            account_info = get_account_info(skey)
+            set_session_value('id', account_info[0])
+            plans = get_user_plans(skey)
+            spending = force_retrieve_spending(skey, plans[0][0], 'csv')
             sql = "INSERT INTO account_data (id, first_name, last_name, plans, skey, spending, "
             sql += "theme, dining_id, statement_date, last_signed_in, first_signed_in) VALUES "
             sql += "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
@@ -703,6 +697,18 @@ def switch_theme():
             return redirect('/')
 
     return redirect(request.args.get('wason'))
+
+@app.route('/logout')
+def logout():
+    """Allows users to log out from their session."""
+    if len(session) > 0:
+        keys = []
+        for item in session.keys():
+            keys.append(item)
+        for item in keys:
+            session.pop(item)
+    return redirect('/')
+
 
 @app.errorhandler(404)
 def page_not_found(ex):
