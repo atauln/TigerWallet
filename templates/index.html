@@ -25,7 +25,7 @@
     <div class="row" style="height:fit-content">
         <div class="container section">
             <h3 class="heading">
-                Current Balance ({{ data[5] }} | {{ plan_name }})
+                Current Balance ({{ plan_name }})
             </h3>
             <h1 class="primary" style="font-size:7vw">{{"${:,.2f}".format(data[0])}}</h1>
             <h6 class="foreground" style="font-size:20px">({{((data[0] * 100 / records[-1][2]|float)|round(2))}}% remaining)</h6>

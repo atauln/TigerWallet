@@ -508,14 +508,11 @@ def landing():
     if daily_budget == 0:
         daily_budget = 1
 
-    first_name = get_db_value('first_name')
-
     # packaging up data to send to template
     data = [current_balance, daily_budget,
         get_spending_over_time(spending, 1),
         get_spending_over_time(spending, 7, 1),
-        get_spending_over_time(spending, 30, 1),
-        first_name]
+        get_spending_over_time(spending, 30, 1)]
 
     return render_template("index.html", session=get_session(), data=data,
         records=spending, plan_name=get_meal_plan_name(get_db_value('dining_id')),
