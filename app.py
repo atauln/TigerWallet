@@ -46,6 +46,33 @@ def get_session():
     """Get the session object"""
     return session
 
+def regenerate_skeys():
+    sql = 'SELECT id, skey FROM account_data'
+
+    mycursor = mydb.cursor()
+    mycursor.execute(sql)
+
+    for entry in [entry for entry in mycursor.fetchall() if entry[1] != '']:
+        skey = entry[1]
+        payload = {
+            'skey': skey
+        }
+        response = requests.get(
+            "https://tigerspend.rit.edu/statementdetail.php",
+            payload
+        )
+
+        lines = response.content.decode(response.encoding).splitlines()
+        reader = csv.reader(lines)
+
+        if len(list(reader)[0]) == 1:
+            update_sql = f"UPDATE account_data SET skey = '', spending = '' WHERE id = '{entry[0]}'"
+
+            mycursor2 = mydb.cursor()
+            mycursor2.execute(update_sql)
+
+            mydb.commit()
+
 # dictionary of datetimes for all semesters
 # select the currect semester with evironmental variables
 semester_times = {
@@ -91,19 +118,10 @@ def get_meal_plan_name(plan_id):
         return meal_plans[plan_id]
     return "Meal Plan"
 
-def fill_user(last_signed_in = get_date_strings()[1], first_signed_in=get_date_strings()[1]):
-    """Inserts a brand new user into the database"""
-
-    update_db_value('skey', get_session_value('skey'))
-    update_db_value('theme', get_session_value('theme'))
-    update_db_value('dining_id', get_session_value('dining_id'))
-    update_db_value('last_signed_in', last_signed_in)
-    update_db_value('first_signed_in', first_signed_in)
-
 def update_db_value(col, value, account_id=""):
     """Update a value for a user"""
     if account_id == "":
-        account_id = get_account_info()[0]
+        account_id = get_account_info(get_db_value('skey'))[0]
 
     sql = f'UPDATE account_data SET {col} = "{value}" WHERE id = "{account_id}"'
 
@@ -127,6 +145,8 @@ def retrieve_db_values(account_id, *args):
 
 def check_db_value(key):
     """Checks a value for a user in the database"""
+    if not check_session_value('id'):
+        return False
     values = retrieve_db_values(get_session_value('id'), key)
     if len(values) == 0:
         return False
@@ -142,7 +162,34 @@ def check_db_value(key):
 
 def get_db_value(key):
     """Gets a value for a user in the database"""
-    return retrieve_db_values(get_session_value("id"), key)[0]
+    return str(retrieve_db_values(get_session_value("id"), key)[0][0]).replace("'", "\"")
+
+def load_spending(acct_id):
+    """Gets spending from the db"""
+    if check_db_value('id'):
+        statement_date = datetime.datetime.strptime(
+            get_db_value('statement_date'),
+            "%m/%d/%Y %H:%M:%S"
+        )
+        if statement_date + datetime.timedelta(minutes=10) < datetime.datetime.now() or acct_id != get_db_value('dining_id'):
+            print ("regenerating statement")
+            update_db_value(
+                'spending',
+                str(force_retrieve_spending(get_db_value('skey'), acct_id))
+            )
+            update_db_value('statement_date', datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
+            update_db_value('dining_id', acct_id)
+    else:
+        return None
+
+    spending = json.loads(str(get_db_value('spending')).replace("\\", "").replace("'", "\""))
+
+    if len(spending[0]) != 4:
+        get_session().pop('id')
+    if spending[1][3] == '':
+        return load_spending(json.loads(get_db_value('plans'))[0][0])
+
+    return spending
 
 def log_to_console(message):
     """Simple function to send message to the console
@@ -176,67 +223,29 @@ def post_to_pings(subject_uuid, username, body):
 
     return response.status_code
 
-def verify_skey_integrity():
-    """Verifies the integrity of the session variables.
+def verify_skey_integrity(skey):
+    """Verifies the integrity of the skey."""
 
-    Regenerates them if they are found to have expired."""
+    start = time.perf_counter()
 
-    if not check_session_value('theme'):
-        set_session_value('theme', 'dark')
+    payload = {
+        'cid': 105,
+        'skey': skey
+    }
 
-    # validate that it is returning an actual csv, and not an HTML
-    spending = [['', '', '', ''], ['', '', '', '']]
+    if check_db_value('dining_id'):
+        payload['acct'] = get_db_value('dining_id')
 
-    if check_session_value('skey'):
-        if not check_session_value('dining_id'):
-            # locates meal plan in use
-            plans = get_user_plans()
-            if plans is None:
-                log_to_console("Caught an HTML document while checking for user plans")
-                get_session().pop('skey')
-                return None, get_session()
+    response = requests.get(
+        "https://tigerspend.rit.edu/statementdetail.php",
+        payload
+    )
 
-            for plan in plans:
-                plan_id = int(plan[0])
-                if get_meal_plan_name(plan_id) == "Meal Plan":
-                    # save the meal plan to your session
-                    log_to_console(f"Found meal plan {plan_id}")
-                    set_session_value('dining_id', plan_id)
-                    break
+    print (time.perf_counter() - start)
 
-        if check_session_value('dining_id'):
-            spending = get_user_spending(get_session_value('dining_id'), 'csv')
-            try:
-                # if it returns a csv but it does not contain anything at this point,
-                # it means that there is no account under this name
-                if spending[1][2] == '':
-                    log_to_console("Returned an empty account during skey verification")
-                    get_session().pop('dining_id')
-                    return verify_skey_integrity()
-
-            except IndexError:
-                # if it gets an exception, it's because it returned an HTML,
-                # in which case the skey is invalid
-                log_to_console("Caught an HTML document while verifying skey integrity")
-                get_session().pop('skey')
-                get_session().pop('dining_id')
-                return None, get_session()
-
-        # invalidate session, retry authentication
-        if len(spending[0]) < 4:
-            log_to_console("Invalid session during skey verification, retrying...")
-            get_session().pop('skey')
-            get_session().pop('dining_id')
-            return verify_skey_integrity()
-    else:
-        return None, session
-
-    if spending[1][2] == '':
-        log_to_console("Returned an empty account during skey verification")
-        session.pop('dining_id')
-        return verify_skey_integrity()
-
-    return spending, get_session()
+    if len(response.history) != 0:
+        return False
+    return True
 
 
 def get_user_spending(acct: int, format_output: str, cid=105):
@@ -303,7 +312,7 @@ def get_user_spending(acct: int, format_output: str, cid=105):
         return json.loads(back)
     return None
 
-def force_retrieve_spending(acct: int, format_output: str, cid = 105):
+def force_retrieve_spending(skey, acct, format_output = 'csv', cid = 105):
     """Return user spending information.
     This should be used very carefully, as it does not check for values."""
 
@@ -314,7 +323,7 @@ def force_retrieve_spending(acct: int, format_output: str, cid = 105):
     # send TigerSpend the payload details and get CSV back
     # only done if the statement is not already in the session
     payload = {
-        'skey': session['skey'],
+        'skey': skey,
         'format': format_output,
         'startdate': start_date,
         'enddate': end_date,
@@ -329,32 +338,21 @@ def force_retrieve_spending(acct: int, format_output: str, cid = 105):
 
     lines = response.content.decode(response.encoding).splitlines()
     reader = csv.reader(lines)
+    result = str(list(reader)).replace("Sol's", "Sols").replace("Jerry's", "Jerrys")
+    result = result.replace("Nathan's", "Nathans").replace("Gracie's", "Gracies").replace("'", "\"")
+    try:
+        json_result = json.loads(result)
+    except json.JSONDecodeError:
+        return ''
 
-    set_session_value('statement_date',
-        datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
-    update_db_value('statement_date', get_session_value('statement_date'))
-    update_db_value(
-        'spending',
-        str(list(reader))
-            .replace("Sol's", "Sols")
-            .replace("Jerry's", "Jerrys")
-            .replace("Gracie's", "Gracies")
-            .replace("Nathan's", "Nathans")
-            .replace("\"", "'")
-    )
-
-    back =  str(get_db_value('spending')[0]).replace("\\", "").replace("'", "\"")
-    return json.loads(back)
+    return json_result
 
 
-def get_user_plans(cid=105):
+def get_user_plans(skey, cid=105):
     """Get a list of all the user's plans and return the first one."""
 
-    if 'skey' not in session:
-        return None
-
     payload = {
-        'skey': session['skey'],
+        'skey': skey,
         'cid': cid
     }
     response = requests.get(
@@ -367,27 +365,22 @@ def get_user_plans(cid=105):
     except AttributeError:
         log_to_console("Ran into error while finding user accounts")
         return None
-    set_session_value('meal_plans', [[plan.attrs['value'],
-        get_meal_plan_name(int(plan.attrs['value']))] for plan in options])
 
-    return get_session_value('meal_plans')
+    return [[plan.attrs['value'], get_meal_plan_name(int(plan.attrs['value']))] for plan in options]
 
 
-def get_account_info(cid=105):
+def get_account_info(skey, cid=105):
     """Get the user's account information from their account page."""
 
-    if 'id' in session:
+    if check_session_value('id'):
         return [
             get_session_value("id"),
-            get_session_value("first_name"),
-            get_session_value("last_name")
+            get_db_value("first_name"),
+            get_db_value("last_name")
         ]
 
-    while 'skey' not in session:
-        verify_skey_integrity()
-
     payload = {
-        'skey': session['skey'],
+        'skey': skey,
         'cid': cid
     }
     response = requests.get(
@@ -405,10 +398,6 @@ def get_account_info(cid=105):
         str(name[0]).replace("'", ""), # first_name
         str(name[1]).replace("'", ""), # last_name
     ]
-
-    set_session_value("id", account_data[0])
-    set_session_value("first_name", account_data[1])
-    set_session_value("last_name", account_data[2])
 
     return account_data
 
@@ -493,12 +482,18 @@ def process_location(raw_location):
 @app.route('/')
 def landing():
     """Method run upon landing on the main page."""
+    start = time.perf_counter()
+    # give theme value if not already given
+    if not check_session_value('theme'):
+        set_session_value('theme', 'dark')
+    if check_db_value('id'):
+        spending = load_spending(get_db_value('dining_id'))
 
-    spending, _ = verify_skey_integrity()
-
-    # check if the skey is contained within the session
-    if not check_session_value('skey'):
-        log_to_console("No 'skey' located in session...")
+    # check if the skey is contained within the db
+    if not check_db_value('id'):
+        log_to_console("id was invalid")
+        if check_session_value('id'):
+            get_session().pop('id')
         return render_template("index.html", session=get_session(),
             redir=f"https://tigerspend.rit.edu/login.php?wason={request.url_root}auth")
 
@@ -508,7 +503,7 @@ def landing():
     delta = lastdate - currentdate
 
     #starting_balance = float(spending[-1][3]) - float(spending[-1][2])
-    current_balance = float(list(spending)[1][3])
+    current_balance = float(spending[1][3])
 
     # get daily budget based off balance in account yesterday
     daily_budget = round(
@@ -517,11 +512,7 @@ def landing():
     if daily_budget == 0:
         daily_budget = 1
 
-    if not check_session_value('first_name'):
-        get_account_info()
-
-    first_name = get_session_value('first_name')
-    log_to_console(f"User's name: {get_session_value('first_name')}")
+    first_name = get_db_value('first_name')
 
     # packaging up data to send to template
     data = [current_balance, daily_budget,
@@ -530,20 +521,32 @@ def landing():
         get_spending_over_time(spending, 30, 1),
         first_name]
 
-    fill_user()
+    end = time.perf_counter()
+    print (end - start)
 
     return render_template("index.html", session=get_session(), data=data,
-        records=spending, plan_name=get_meal_plan_name(session['dining_id']))
+        records=spending, plan_name=get_meal_plan_name(get_db_value('dining_id')),
+        plans=json.loads(get_db_value('plans')))
 
 
 @app.route('/purchases')
 def daily():
     """Method run upon opening the Purchases tab"""
 
-    spending, _ = verify_skey_integrity()
-    if not check_session_value('skey'):
-        log_to_console("No 'skey' located in session...")
-        return redirect('/')
+    # give theme value if not already given
+    if not check_session_value('theme'):
+        set_session_value('theme', 'dark')
+
+    if check_db_value('id'):
+        spending = load_spending(get_db_value('dining_id'))
+
+    # check if the skey is contained within the db
+    if not check_db_value('id'):
+        log_to_console("id was invalid")
+        if check_session_value('id'):
+            get_session().pop('id')
+        return render_template("index.html", session=get_session(),
+            redir=f"https://tigerspend.rit.edu/login.php?wason={request.url_root}auth")
 
     firstdate, currentdate, _ = get_datetimes()
 
@@ -574,10 +577,20 @@ def daily():
 def stats():
     """Method run upon opening the Stats tab"""
 
-    spending, _ = verify_skey_integrity()
-    if not check_session_value('skey'):
-        log_to_console("No 'skey' located in session...")
-        return redirect('/')
+    # give theme value if not already given
+    if not check_session_value('theme'):
+        set_session_value('theme', 'dark')
+
+    if check_db_value('id'):
+        spending = load_spending(get_db_value('dining_id'))
+
+    # check if the skey is contained within the db
+    if not check_db_value('id'):
+        log_to_console("id was invalid")
+        if check_session_value('id'):
+            get_session().pop('id')
+        return render_template("index.html", session=get_session(),
+            redir=f"https://tigerspend.rit.edu/login.php?wason={request.url_root}auth")
 
     _, currentdate, enddate = get_datetimes()
     firstdate = get_first_purchase_date(spending)
@@ -601,17 +614,12 @@ def stats():
 
 @app.route('/accounts')
 def accounts():
-    """Method run upon opening the Accounts tab"""
+    """Method run upon opening the Accounts tab
+    args provided: plan (dining_id)"""
 
-    verify_skey_integrity()
-    if not check_session_value('skey'):
-        log_to_console("No 'skey' located in session...")
-        return redirect('/')
-
-    if 'plan' in request.args:
-        set_session_value('dining_id', int(request.args.get("plan")))
-        update_db_value('dining_id', int(request.args.get("plan")))
-        force_retrieve_spending(int(request.args.get("plan")), 'csv')
+    if check_db_value('id') and 'plan' in request.args:
+        load_spending(int(request.args.get('plan')))
+        update_db_value('dining_id', int(request.args.get('plan')))
 
     return redirect('/')
 
@@ -619,30 +627,37 @@ def accounts():
 def auth():
     """Method for authenticating on /auth"""
     # authenticate user based on redirect from tigerspend with skey enclosed as arg
+
+    if not check_session_value('theme'):
+        set_session_value('theme', 'dark')
+
     if 'skey' in request.args.keys():
-        set_session_value('skey', str(request.args.get('skey')))
-
-        account_info = get_account_info()
+        skey = str(request.args.get('skey'))
+        account_info = get_account_info(skey)
         set_session_value('id', account_info[0])
-        set_session_value('first_name', account_info[1])
-        set_session_value('last_name', account_info[2])
+        plans = get_user_plans(skey)
+        spending = force_retrieve_spending(skey, plans[0][0], 'csv')
+        current_datetime = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 
-        if not check_db_value('skey'):
+        if check_db_value('id'):
+            update_db_value('skey', skey)
+        else:
+            print ('making new db user???')
             sql = "INSERT INTO account_data (id, first_name, last_name, plans, skey, spending, "
             sql += "theme, dining_id, statement_date, last_signed_in, first_signed_in) VALUES "
             sql += "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
             val = (
-                account_info[0],
+                get_session_value('id'),
                 account_info[1],
                 account_info[2],
-                "",
-                get_session_value('skey'),
-                "",
-                "",
-                0,
-                "",
-                "",
-                ""
+                str(plans),
+                skey,
+                str(spending),
+                get_session_value('theme'),
+                plans[0][0],
+                current_datetime,
+                current_datetime,
+                current_datetime
             )
             mycursor = mydb.cursor()
             mycursor.execute(sql, val)
@@ -664,18 +679,22 @@ def auth():
 @app.route('/switch_theme')
 def switch_theme():
     """Closed URL for switching the site's theme."""
-    if not check_session_value('theme') and check_session_value('skey'):
+    if check_db_value('id'):
+        theme = get_db_value('theme')
+        if theme == 'dark':
+            update_db_value('theme', 'light')
+        else:
+            update_db_value('theme', 'dark')
         set_session_value('theme', get_db_value('theme'))
-
-    if not check_session_value('theme'):
-        set_session_value('theme', 'dark')
-    elif get_session_value('theme') == 'light':
-        set_session_value('theme', 'dark')
     else:
-        set_session_value('theme', 'light')
-
-    if check_session_value('skey'):
-        update_db_value('theme', get_session_value('theme'))
+        if not check_session_value('theme'):
+            set_session_value('theme', 'dark')
+        elif get_session_value('theme') == 'dark':
+            set_session_value('theme', 'light')
+        elif get_session_value('theme') == 'light':
+            set_session_value('theme', 'dark')
+        else:
+            set_session_value('theme', 'dark')
 
     if 'wason' in request.args:
         if str(request.args.get('wason'))[0] != '/':
