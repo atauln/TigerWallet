@@ -137,7 +137,7 @@ def execute_sql(sql: str, commit: bool, fetchall: bool, value):
 
 def remove_user(user_id: str):
     """Removes a user from the database completely"""
-    sql = f"REMOVE FROM account_data WHERE id = '{user_id}'"
+    sql = f"DELETE FROM account_data WHERE id = '{user_id}'"
     execute_sql(sql, True, False, [])
 
 def update_db_value(col, value, account_id=""):
@@ -247,11 +247,9 @@ def verify_skey_integrity(skey):
 
     payload = {
         'cid': 105,
-        'skey': skey
+        'skey': skey,
+        'acct': 1
     }
-
-    if check_db_value('dining_id'):
-        payload['acct'] = get_db_value('dining_id')
 
     response = requests.get(
         "https://tigerspend.rit.edu/statementdetail.php",
@@ -430,6 +428,24 @@ def process_location(raw_location):
             return item[1]
     return None
 
+def update_based_on_skey(entry):
+    """Update the value based on an skey
+    Made for extend_skey()"""
+    if not verify_skey_integrity(entry[1]):
+        remove_user(str(entry[0]))
+    else:
+        acct_id = str(retrieve_db_values(entry[0], 'dining_id')[0][0]).replace("'", "\"")
+        update_db_value(
+            'spending',
+            str(force_retrieve_spending(entry[1], acct_id)),
+            str(entry[0])
+        )
+        update_db_value(
+            'statement_date',
+            datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"),
+            str(entry[0])
+        )
+
 def extend_skey(minutes):
     """Extends all skey's in the database"""
     while True:
@@ -437,27 +453,15 @@ def extend_skey(minutes):
         values = execute_sql(sql, False, True, [])
 
         for entry in [entry for entry in values if entry[1] != '']:
-            skey = entry[1]
-            payload = {
-                'skey': skey
-            }
-            response = requests.get(
-                "https://tigerspend.rit.edu/statementdetail.php",
-                payload
-            )
-
-            lines = response.content.decode(response.encoding).splitlines()
-            reader = csv.reader(lines)
-            response_list = list(reader)
-
-            if len(response_list[0]) == 1:
-                remove_user(str(entry[0]))
-        print ("Regenerated skeys!")
+            Thread(target=update_based_on_skey, args=(entry,), name='SkeyUpdate').start()
         time.sleep(minutes * 60)
 
 print ("Starting skey regen thread!")
-daemon = Thread(target=extend_skey, args=(int(os.environ['UPDATE_RATE']),), daemon=True, name='Background')
-daemon.start()
+Thread(
+    target=extend_skey,
+    args=(int(os.environ['UPDATE_RATE']),),
+    daemon=True,
+    name='Background').start()
 
 @app.route('/')
 def landing():
