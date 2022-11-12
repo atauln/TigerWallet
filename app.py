@@ -72,33 +72,6 @@ def get_session():
     """Get the session object"""
     return session
 
-def extend_skey(minutes):
-    """Extends all skey's in the database"""
-    while True:
-        sql = 'SELECT id, skey FROM account_data'
-        values = execute_sql(sql, False, True, [])
-
-        for entry in [entry for entry in values if entry[1] != '']:
-            skey = entry[1]
-            payload = {
-                'skey': skey
-            }
-            response = requests.get(
-                "https://tigerspend.rit.edu/statementdetail.php",
-                payload
-            )
-
-            lines = response.content.decode(response.encoding).splitlines()
-            reader = csv.reader(lines)
-
-            if len(list(reader)[0]) == 1:
-                update_db_value('skey', '', entry[0])
-                update_db_value('spending', '', entry[0])
-        time.sleep(minutes * 60)
-
-print ("Starting skey regen thread!")
-daemon = Thread(target=extend_skey, args=(int(os.environ['UPDATE_RATE']),), daemon=True, name='Background')
-
 # dictionary of datetimes for all semesters
 # select the currect semester with evironmental variables
 semester_times = {
@@ -224,7 +197,7 @@ def load_spending(acct_id):
         return None
     spending = json.loads(str(get_db_value('spending')).replace("\\", "").replace("'", "\""))
     if len(spending) == 0: #      when trying to get spending just returned an HTML
-        get_session().pop('id') # i.e. skey invalid
+        return load_spending(json.loads(get_db_value('plans'))[0][0])
     elif len(spending[0]) != 4:
         get_session().pop('id') # edge case of skey being invalid
     elif spending[1][3] == '':  # if account invalid, just get default plan's spending
@@ -450,6 +423,35 @@ def process_location(raw_location):
                 return item[1] + " (Online)"
             return item[1]
     return None
+
+def extend_skey(minutes):
+    """Extends all skey's in the database"""
+    while True:
+        sql = 'SELECT id, skey FROM account_data'
+        values = execute_sql(sql, False, True, [])
+
+        for entry in [entry for entry in values if entry[1] != '']:
+            skey = entry[1]
+            payload = {
+                'skey': skey
+            }
+            response = requests.get(
+                "https://tigerspend.rit.edu/statementdetail.php",
+                payload
+            )
+
+            lines = response.content.decode(response.encoding).splitlines()
+            reader = csv.reader(lines)
+
+            if len(list(reader)[0]) == 1:
+                update_db_value('skey', '', entry[0])
+                update_db_value('spending', '[]', entry[0])
+        print ("Regenerated skeys!")
+        time.sleep(minutes * 60)
+
+print ("Starting skey regen thread!")
+daemon = Thread(target=extend_skey, args=(int(os.environ['UPDATE_RATE']),), daemon=True, name='Background')
+daemon.start()
 
 @app.route('/')
 def landing():
