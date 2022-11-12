@@ -250,11 +250,19 @@ def verify_skey_integrity(skey):
         'skey': skey,
         'acct': 1
     }
+    count = 0
+    while count < 20:
+        try:
+            response = requests.get(
+                "https://tigerspend.rit.edu/statementdetail.php",
+                payload
+            )
+            break
+        except ConnectionError:
+            count += 1
+        time.sleep(.2)
 
-    response = requests.get(
-        "https://tigerspend.rit.edu/statementdetail.php",
-        payload
-    )
+
 
     if len(response.history) != 0:
         return False
