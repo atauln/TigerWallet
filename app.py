@@ -15,13 +15,25 @@ import requests
 from bs4 import BeautifulSoup
 import mysql.connector
 
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+
 load_dotenv()
 
-mydb = mysql.connector.connect(
-  host = os.environ['DB_URL'],
-  user = os.environ['DB_USERNAME'],
-  password = os.environ['DB_PASSWORD'],
-  database = os.environ['DB_USERNAME']
+sentry_sdk.init(
+    dsn=os.environ['SENTRY_DSN'],
+    integrations=[
+        FlaskIntegration(),
+    ],
+
+    traces_sample_rate=float(os.environ['SAMPLE_RATE'])
+)
+
+MYDB = mysql.connector.connect(
+    host = os.environ['DB_URL'],
+    user = os.environ['DB_USERNAME'],
+    password = os.environ['DB_PASSWORD'],
+    database = os.environ['DB_USERNAME']
 )
 
 app = Flask(__name__)
@@ -29,6 +41,16 @@ app.secret_key = os.urandom(16)
 
 os.environ['TZ'] = "America/New_York"
 time.tzset()
+
+def open_db():
+    """Refresh the database connection"""
+    global MYDB
+    MYDB = mysql.connector.connect(
+        host = os.environ['DB_URL'],
+        user = os.environ['DB_USERNAME'],
+        password = os.environ['DB_PASSWORD'],
+        database = os.environ['DB_USERNAME']
+    )
 
 def set_session_value(key, value):
     """Sets a session value for the user session"""
@@ -49,11 +71,9 @@ def get_session():
 def extend_skey():
     """Extends the lifetime of an skey"""
     sql = 'SELECT id, skey FROM account_data'
+    values = execute_sql(sql, False, True, [])
 
-    mycursor = mydb.cursor()
-    mycursor.execute(sql)
-
-    for entry in [entry for entry in mycursor.fetchall() if entry[1] != '']:
+    for entry in [entry for entry in values if entry[1] != '']:
         skey = entry[1]
         payload = {
             'skey': skey
@@ -68,11 +88,8 @@ def extend_skey():
 
         if len(list(reader)[0]) == 1:
             update_sql = f"UPDATE account_data SET skey = '', spending = '' WHERE id = '{entry[0]}'"
-
-            mycursor2 = mydb.cursor()
-            mycursor2.execute(update_sql)
-
-            mydb.commit()
+            update_db_value('skey', '', entry[0])
+            update_db_value('spending', '', entry[0])
 
 # dictionary of datetimes for all semesters
 # select the currect semester with evironmental variables
@@ -119,6 +136,24 @@ def get_meal_plan_name(plan_id):
         return meal_plans[plan_id]
     return "Meal Plan"
 
+def execute_sql(sql: str, commit: bool, fetchall: bool, value):
+    """Executes raw SQL"""
+    complete = False
+    while not complete:
+        try:
+            mycursor = MYDB.cursor()
+            if len(value) == 0:
+                mycursor.execute(sql)
+            else:
+                mycursor.execute(sql, value)
+            if commit:
+                MYDB.commit()
+            if fetchall:
+                return mycursor.fetchall()
+            complete = True
+        except mysql.connector.OperationalError:
+            open_db()
+
 def update_db_value(col, value, account_id=""):
     """Update a value for a user"""
     if account_id == "":
@@ -126,10 +161,7 @@ def update_db_value(col, value, account_id=""):
 
     sql = f'UPDATE account_data SET {col} = "{value}" WHERE id = "{account_id}"'
 
-    mycursor = mydb.cursor()
-    mycursor.execute(sql)
-
-    mydb.commit()
+    execute_sql(sql, True, False, [])
 
 def retrieve_db_values(account_id, *args):
     """Retrieve columns from a database"""
@@ -139,10 +171,9 @@ def retrieve_db_values(account_id, *args):
     sql = sql[:-2]
     sql += f" FROM account_data WHERE id = '{account_id}'"
 
-    mycursor = mydb.cursor()
-    mycursor.execute(sql)
+    values = execute_sql(sql, False, True, [])
 
-    return mycursor.fetchall()
+    return values
 
 def check_db_value(key):
     """Checks a value for a user in the database"""
@@ -171,8 +202,10 @@ def load_spending(acct_id):
             get_db_value('statement_date'),
             "%m/%d/%Y %H:%M:%S"
         )
-        deadline = statement_date + datetime.timedelta(minutes=10)
+        deadline = statement_date + datetime.timedelta(minutes=5)
         if deadline < datetime.datetime.now() or acct_id != get_db_value('dining_id'):
+            # if the last cached spending is over x minutes old
+            # regenerate the spending
             update_db_value(
                 'spending',
                 str(force_retrieve_spending(get_db_value('skey'), acct_id))
@@ -181,15 +214,13 @@ def load_spending(acct_id):
             update_db_value('dining_id', acct_id)
     else:
         return None
-
     spending = json.loads(str(get_db_value('spending')).replace("\\", "").replace("'", "\""))
-    if len(spending) == 0:
-        get_session().pop('id')
+    if len(spending) == 0: #      when trying to get spending just returned an HTML
+        get_session().pop('id') # i.e. skey invalid
     elif len(spending[0]) != 4:
-        get_session().pop('id')
-    elif spending[1][3] == '':
+        get_session().pop('id') # edge case of skey being invalid
+    elif spending[1][3] == '':  # if account invalid, just get default plan's spending
         return load_spending(json.loads(get_db_value('plans'))[0][0])
-
     return spending
 
 def log_to_console(message):
@@ -244,70 +275,6 @@ def verify_skey_integrity(skey):
         return False
     return True
 
-
-def get_user_spending(acct: int, format_output: str, cid=105):
-    """Return user spending information."""
-
-    # check the semester ID and update start and end dates accordingly
-    start_date = semester_times[int(os.getenv("CURRENT_SEMESTER"))]["start"].strftime("%Y-%m-%d")
-    end_date = semester_times[int(os.getenv("CURRENT_SEMESTER"))]["end"].strftime("%Y-%m-%d")
-
-    if 'skey' in session:
-        if check_session_value('statement_date'):
-            statement_date = datetime.datetime.strptime(
-                get_session_value('statement_date'),
-                "%m/%d/%Y %H:%M:%S"
-            )
-            if statement_date + datetime.timedelta(minutes=3) < datetime.datetime.now():
-                session.pop('statement_date')
-                if check_db_value('statement_date'):
-                    update_db_value('statement_date', '')
-                    update_db_value('spending', '')
-        if check_db_value('statement_date'):
-            statement_date = datetime.datetime.strptime(
-                get_db_value('statement_date')[0],
-                "%m/%d/%Y %H:%M:%S"
-            )
-            if statement_date + datetime.timedelta(minutes=10) < datetime.datetime.now():
-                if check_session_value('statement_date'):
-                    session.pop('statement_date')
-                update_db_value('spending', '')
-                update_db_value('statement_date', '')
-        if not check_db_value('spending') or int(get_db_value('dining_id')[0]) != acct:
-            # send TigerSpend the payload details and get CSV back
-            # only done if the statement is not already in the session
-            payload = {
-                'skey': session['skey'],
-                'format': format_output,
-                'startdate': start_date,
-                'enddate': end_date,
-                'acct': acct,
-                'cid': cid
-            }
-
-            response = requests.get(
-                "https://tigerspend.rit.edu/statementdetail.php",
-                payload
-            )
-
-            lines = response.content.decode(response.encoding).splitlines()
-            reader = csv.reader(lines)
-
-            set_session_value('statement_date',
-                datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
-            update_db_value('statement_date', get_session_value('statement_date'))
-            update_db_value(
-                'spending',
-                str(list(reader))
-                    .replace("Sol's", "Sols")
-                    .replace("Jerry's", "Jerrys")
-                    .replace("Gracie's", "Gracies")
-                    .replace("Nathan's", "Nathans")
-                    .replace("\"", "'")
-            )
-        back =  str(get_db_value('spending')[0]).replace("\\", "").replace("'", "\"")
-        return json.loads(back)
-    return None
 
 def force_retrieve_spending(skey, acct, format_output = 'csv', cid = 105):
     """Return user spending information.
@@ -484,7 +451,6 @@ def landing():
         set_session_value('theme', 'dark')
     if check_db_value('id'):
         spending = load_spending(get_db_value('dining_id'))
-
     # check if the skey is contained within the db
     if not check_db_value('id'):
         log_to_console("id was invalid")
@@ -651,10 +617,8 @@ def auth():
                 current_datetime,
                 current_datetime
             )
-            mycursor = mydb.cursor()
-            mycursor.execute(sql, val)
 
-            mydb.commit()
+            execute_sql(sql, True, False, val)
     else:
         log_to_console("Did not provide an 'skey'")
 
@@ -706,7 +670,6 @@ def logout():
         for item in keys:
             session.pop(item)
     return redirect('/')
-
 
 @app.errorhandler(404)
 def page_not_found(ex):
