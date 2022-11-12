@@ -10,7 +10,7 @@ itsdangerous==2.1.2
 Jinja2==3.1.2
 MarkupSafe==2.1.1
 mysql-connector-python==8.0.31
-protobuf==3.20.1
+protobuf==3.20.2
 python-dotenv==0.21.0
 requests==2.28.1
 sentry-sdk==1.10.1
