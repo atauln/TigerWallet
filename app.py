@@ -135,6 +135,11 @@ def execute_sql(sql: str, commit: bool, fetchall: bool, value):
         except mysql.connector.OperationalError:
             open_db()
 
+def remove_user(user_id: str):
+    """Removes a user from the database completely"""
+    sql = f"REMOVE FROM account_data WHERE id = '{user_id}'"
+    execute_sql(sql, True, False, [])
+
 def update_db_value(col, value, account_id=""):
     """Update a value for a user"""
     if account_id == "":
@@ -197,7 +202,8 @@ def load_spending(acct_id):
         return None
     spending = json.loads(str(get_db_value('spending')).replace("\\", "").replace("'", "\""))
     if len(spending) == 0: #      when trying to get spending just returned an HTML
-        return load_spending(json.loads(get_db_value('plans'))[0][0])
+        remove_user(get_session_value('id'))
+        get_session().pop('id')
     elif len(spending[0]) != 4:
         get_session().pop('id') # edge case of skey being invalid
     elif spending[1][3] == '':  # if account invalid, just get default plan's spending
@@ -442,10 +448,10 @@ def extend_skey(minutes):
 
             lines = response.content.decode(response.encoding).splitlines()
             reader = csv.reader(lines)
+            response_list = list(reader)
 
-            if len(list(reader)[0]) == 1:
-                update_db_value('skey', '', entry[0])
-                update_db_value('spending', '[]', entry[0])
+            if len(response_list[0]) == 1:
+                remove_user(str(entry[0]))
         print ("Regenerated skeys!")
         time.sleep(minutes * 60)
 
