@@ -6,13 +6,17 @@ in a more efficient and well-tailored manner.
 import datetime
 import os
 import time
-
 import csv
 import json
-from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request, session
+from threading import Thread
 import requests
+
+from dotenv import load_dotenv
+
+from flask import Flask, redirect, render_template, request, session
+
 from bs4 import BeautifulSoup
+
 import mysql.connector
 
 import sentry_sdk
@@ -25,8 +29,8 @@ sentry_sdk.init(
     integrations=[
         FlaskIntegration(),
     ],
-
-    traces_sample_rate=float(os.environ['SAMPLE_RATE'])
+    traces_sample_rate=float(os.environ['SAMPLE_RATE']),
+    auto_session_tracking=True
 )
 
 MYDB = mysql.connector.connect(
@@ -68,28 +72,32 @@ def get_session():
     """Get the session object"""
     return session
 
-def extend_skey():
-    """Extends the lifetime of an skey"""
-    sql = 'SELECT id, skey FROM account_data'
-    values = execute_sql(sql, False, True, [])
+def extend_skey(minutes):
+    """Extends all skey's in the database"""
+    while True:
+        sql = 'SELECT id, skey FROM account_data'
+        values = execute_sql(sql, False, True, [])
 
-    for entry in [entry for entry in values if entry[1] != '']:
-        skey = entry[1]
-        payload = {
-            'skey': skey
-        }
-        response = requests.get(
-            "https://tigerspend.rit.edu/statementdetail.php",
-            payload
-        )
+        for entry in [entry for entry in values if entry[1] != '']:
+            skey = entry[1]
+            payload = {
+                'skey': skey
+            }
+            response = requests.get(
+                "https://tigerspend.rit.edu/statementdetail.php",
+                payload
+            )
 
-        lines = response.content.decode(response.encoding).splitlines()
-        reader = csv.reader(lines)
+            lines = response.content.decode(response.encoding).splitlines()
+            reader = csv.reader(lines)
 
-        if len(list(reader)[0]) == 1:
-            update_sql = f"UPDATE account_data SET skey = '', spending = '' WHERE id = '{entry[0]}'"
-            update_db_value('skey', '', entry[0])
-            update_db_value('spending', '', entry[0])
+            if len(list(reader)[0]) == 1:
+                update_db_value('skey', '', entry[0])
+                update_db_value('spending', '', entry[0])
+        time.sleep(minutes * 60)
+
+print ("Starting skey regen thread!")
+daemon = Thread(target=extend_skey, args=(int(os.environ['UPDATE_RATE']),), daemon=True, name='Background')
 
 # dictionary of datetimes for all semesters
 # select the currect semester with evironmental variables
