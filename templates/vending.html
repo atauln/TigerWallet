@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}Vending Machines{% endblock %}
+
+{% block theme_url %}
+    '/switch_theme?wason=/vending'
+{% endblock %}
+
+{% if 'theme' in session %}
+    {% block styles %}
+    {% set css_url = './styles/' + session["theme"] + '.css' %}
+    {{ url_for('static', filename=css_url) }}
+    {% endblock %}
+    {% block icon %}
+    {{ url_for('static', filename='icons/icon-'+ session['theme'] + '.png' )}}
+    {% endblock %}
+    {% block favicon %}
+    {{ url_for('static', filename='icon-' + session['theme'] + '.ico') }}
+    {% endblock %}
+{% endif %}
+
+{% block content %}
+{% if success %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <strong>Submitted!</strong> Thank you for your contribution.
+</div>
+{% elif duplicate %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <strong>Duplicate!</strong> This id is already registered.
+</div>
+{% endif %}
+<form method="post">
+    <div class="form-group">
+        <label for="id">ID</label>
+        <input type="number" class="form-control" id="id" name="id" placeholder="69" aria-describedby="idHelp">
+        <small id="idHelp" class="form-text text-muted">Top Right of Machine | Must be an integer</small>
+    </div>
+    <br>
+    <div class="form-group">
+        <label for="type">Type</label>
+        <select class="form-control" id="type" name="type">
+            <option>FOOD</option>
+            <option>BEVERAGE</option>
+            <option>STARBUCKS</option>
+            <option>SNACK</option>
+            <option>WELLNESS</option>
+            <option>COCA-COLA</option>
+        </select>
+    </div>
+    <br>
+    <div class="form-group">
+        <label for="building">Building</label>
+        <select class="form-control" id="building" name="building">
+            <option>George Eastman Hall</option>
+            <option>Frank Ritter Memorial Ice Arena</option>
+            <option>George H. Clark Memorial Ice Arena</option>
+            <option>Campus Center</option>
+            <option>Student Alumni Union</option>
+            <option>The Wallace Center</option>
+            <option>Liberal Arts Hall</option>
+            <option>James E. Booth Hall</option>
+            <option>Sands Family Studios</option>
+            <option>Vignelli Center for Design Studies</option>
+        </select>
+    </div>
+    <br>
+    <div class="form-group">
+        <label for="floor">Floor</label>
+        <select class="form-control" id="floor" name="floor">
+            <option>A</option>
+            {% for i in range(12) %}
+            <option>{{i}}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <br>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+{% endblock %}

@@ -9,6 +9,9 @@
 .theme-color {
     color: #09332e;
 }
+label {
+    color: #ebf7f6;
+}
 .progress {
     --bs-progress-bar-bg: #1B998B;
     --bs-progress-bar-color: #09332e;

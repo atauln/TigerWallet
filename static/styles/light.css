@@ -7,7 +7,10 @@
     text-align:center;
 }
 .theme-color {
-    color: #ebf7f6
+    color: #ebf7f6;
+}
+label {
+    color: #09332e;
 }
 .progress {
     --bs-progress-bar-bg: #1B998B;

@@ -135,17 +135,17 @@ def execute_sql(sql: str, commit: bool, fetchall: bool, value):
         except mysql.connector.OperationalError:
             open_db()
 
-def remove_user(user_id: str):
+def remove_user(user_id: str, table="account_data"):
     """Removes a user from the database completely"""
-    sql = f"DELETE FROM account_data WHERE id = '{user_id}'"
+    sql = f"DELETE FROM {table} WHERE id = '{user_id}'"
     execute_sql(sql, True, False, [])
 
-def update_db_value(col, value, account_id=""):
+def update_db_value(col, value, account_id="", table="account_data"):
     """Update a value for a user"""
     if account_id == "":
         account_id = get_account_info(get_db_value('skey'))[0]
 
-    sql = f'UPDATE account_data SET {col} = "{value}" WHERE id = "{account_id}"'
+    sql = f'UPDATE {table} SET {col} = "{value}" WHERE id = "{account_id}"'
 
     execute_sql(sql, True, False, [])
 
@@ -407,6 +407,7 @@ def process_location(raw_location):
         "BEVERAGE": "Vending Machine (Beverage)",
         "SNACK": "Vending Machine (Snack)",
         "STARBUCKS": "Vending Machine (StarBucks)",
+        "FOOD": "Vending Machine (FOOD)",
         "Beanz": "Beanz",
         "Commons": "The Commons",
         "Gracie": "Gracie's",
@@ -436,40 +437,61 @@ def process_location(raw_location):
             return item[1]
     return None
 
-def update_based_on_skey(entry):
-    """Update the value based on an skey
-    Made for extend_skey()"""
-    if not verify_skey_integrity(entry[1]):
-        remove_user(str(entry[0]))
-    else:
-        acct_id = str(retrieve_db_values(entry[0], 'dining_id')[0][0]).replace("'", "\"")
-        update_db_value(
-            'spending',
-            str(force_retrieve_spending(entry[1], acct_id)),
-            str(entry[0])
-        )
-        update_db_value(
-            'statement_date',
-            datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"),
-            str(entry[0])
-        )
+def get_spending_per_day(spending, days):
+    """Uses the spending to generate a dictionary of spending per day"""
+    a_sum = 0
+    count = 0
+    spending_a = {}
+    for i in range(days):
+        date = datetime.datetime.today() - datetime.timedelta(days=i)
+        date_processed = date.strftime("%-m/%d/%Y")
+        if date_processed not in spending_a:
+            spending_a[date_processed] = []
+        for purchase in list(spending):
+            if str(purchase[0]).split(" ", maxsplit=1)[0] == date_processed:
+                purchase[1] = process_location(purchase[1])
+                purchase[2] = float(purchase[2]) * -1
+                purchase[3] = float(purchase[3])
+                a_sum += purchase[2]
+                count += 1
+                spending_list = spending_a[date_processed]
+                spending_list.append(purchase)
+    return spending_a, a_sum, count
 
-def extend_skey(minutes):
-    """Extends all skey's in the database"""
-    while True:
-        sql = 'SELECT id, skey FROM account_data'
-        values = execute_sql(sql, False, True, [])
+# def update_based_on_skey(entry):
+#     """Update the value based on an skey
+#     Made for extend_skey()"""
+#     if not verify_skey_integrity(entry[1]):
+#         remove_user(str(entry[0]))
+#     else:
+#         acct_id = str(retrieve_db_values(entry[0], 'dining_id')[0][0]).replace("'", "\"")
+#         update_db_value(
+#             'spending',
+#             str(force_retrieve_spending(entry[1], acct_id)),
+#             str(entry[0])
+#         )
+#         update_db_value(
+#             'statement_date',
+#             datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"),
+#             str(entry[0])
+#         )
 
-        for entry in [entry for entry in values if entry[1] != '']:
-            Thread(target=update_based_on_skey, args=(entry,), name='SkeyUpdate').start()
-        time.sleep(minutes * 60)
+# def extend_skey(minutes):
+#     """Extends all skey's in the database"""
+#     while True:
+#         sql = 'SELECT id, skey FROM account_data'
+#         values = execute_sql(sql, False, True, [])
 
-print ("Starting skey regen thread!")
-Thread(
-    target=extend_skey,
-    args=(int(os.environ['UPDATE_RATE']),),
-    daemon=True,
-    name='Background').start()
+#         for entry in [entry for entry in values if entry[1] != '']:
+#             Thread(target=update_based_on_skey, args=(entry,), name='SkeyUpdate').start()
+#         time.sleep(minutes * 60)
+
+# print ("Starting skey regen thread!")
+# Thread(
+#     target=extend_skey,
+#     args=(int(os.environ['UPDATE_RATE']),),
+#     daemon=True,
+#     name='Background').start()
 
 @app.route('/')
 def landing():
@@ -514,7 +536,7 @@ def landing():
 
 
 @app.route('/purchases')
-def daily():
+def purchases():
     """Method run upon opening the Purchases tab"""
 
     # give theme value if not already given
@@ -533,29 +555,11 @@ def daily():
             redir=f"https://tigerspend.rit.edu/login.php?wason={request.url_root}auth")
 
     firstdate, currentdate, _ = get_datetimes()
-
-    spending_a = {}
-
-    a_sum = 0
-    count = 0
-
     delta = currentdate - firstdate
-    for i in range(delta.days):
-        date = datetime.datetime.today() - datetime.timedelta(days=i)
-        date_processed = date.strftime("%-m/%d/%Y")
-        if date_processed not in spending_a:
-            spending_a[date_processed] = []
-        for purchase in list(spending):
-            if str(purchase[0]).split(" ", maxsplit=1)[0] == date_processed:
-                purchase[1] = process_location(purchase[1])
-                purchase[2] = float(purchase[2]) * -1
-                purchase[3] = float(purchase[3])
-                a_sum += purchase[2]
-                count += 1
-                spending_list = spending_a[date_processed]
-                spending_list.append(purchase)
 
-    return render_template("purchases.html", session=get_session(), spending=spending_a,
+    spending_per_day, _, _ = get_spending_per_day(spending, delta.days)
+
+    return render_template("purchases.html", session=get_session(), spending=spending_per_day,
             plans=json.loads(get_db_value('plans')))
 
 @app.route('/stats')
@@ -593,10 +597,58 @@ def stats():
         date = datetime.datetime.strftime(currentdate - datetime.timedelta(days=i), "%-m/%-d")
         money_spent_per_day[date] = get_spending_over_time(spending, 1, i)
 
+    spending_per_day, _, _ = get_spending_per_day(spending, delta.days)
+
+    cost_per_day = {}
+    for key, value in spending_per_day.items():
+        if key not in cost_per_day:
+            cost_per_day[key] = 0.0
+        for val in value:
+            cost_per_day[key] += float(val[2])
+
     return render_template("stats.html", session=get_session(),
         balance=balance, deposit=deposit,
         recommended_balance = recommended_balance,
-        plans=json.loads(get_db_value('plans')))
+        plans=json.loads(get_db_value('plans')),
+        cost_per_day=cost_per_day)
+
+@app.route('/vending', methods=['GET', 'POST'])
+def vending():
+    """Vending form"""
+
+    # give theme value if not already given
+    if not check_session_value('theme'):
+        set_session_value('theme', 'dark')
+
+    if request.method == 'POST':
+        vending_id = request.form['id']
+        vending_type = request.form['type']
+        building = request.form['building']
+        floor = request.form['floor']
+        if not (vending_id or vending_type or building or floor):
+            return render_template('vending.html', success=False)
+        open_db()
+        try:
+            sql = "INSERT INTO VendingMachineLocations (id, type, building, floor) "
+            sql += "VALUES (%s, %s, %s, %s)"
+            val = (
+                vending_id,
+                vending_type,
+                building,
+                floor
+            )
+            execute_sql(sql, True, False, val)
+            return render_template('vending.html', success=True)
+        except mysql.connector.errors.IntegrityError as ex:
+            print (ex)
+            return render_template('vending.html', duplicate=True)
+        except Exception as ex:
+            print (ex)
+            return render_template('vending.html')
+
+    return render_template('vending.html')
+
+
 
 @app.route('/accounts')
 def accounts():
