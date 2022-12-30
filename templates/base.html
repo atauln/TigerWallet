@@ -31,12 +31,12 @@
             padding:0;
         }
         h3.primary {
-            font-size:3vw;
+            font-size:54px;
             margin:auto;
             text-align: center;
         }
         h4.primary {
-            font-size: 2vw;
+            font-size: 36px;
             margin:auto;
             text-align: center;
         }
@@ -44,6 +44,37 @@
             --bs-progress-height: 1.5rem;
             --bs-progress-border-radius:0.4rem;
             --bs-gutter-x: 0rem
+        }
+        @media only screen and (max-device-width: 1024px) {
+            .container-fluid {
+                width: 100%;
+            }
+            .navbar {
+                height: 150px;
+            }
+            .nav-item {
+                font-size: 165%;
+            }
+            .dropdown button {
+                font-size: 100%;
+            }
+            h5.red {
+                font-size: 155%
+            }
+            a.btn {
+                font-size: 175%;
+            }
+            .logo {
+                height: 126px;
+                width: 126px
+            }
+            .col-sm-12 * {
+                height: 150%;
+                font-size: 130%;
+            }
+            .table-responsive * {
+                font-size: 80% !important;
+            }
         }
     </style>
     <link rel="stylesheet" href="
@@ -55,7 +86,7 @@
     
     <nav class="navbar navbar-expand-sm" style="border-bottom:2px solid black">
         <div>
-            <a href="/"><img src="
+            <a href="/"><img class="logo" src="
                 {% block icon %}
                 {{ url_for('static', filename='icons/icon-dark.png' )}}
                 {% endblock %}" alt="TigerWallet logo" width="48px" height="48px"
