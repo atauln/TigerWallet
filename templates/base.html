@@ -73,9 +73,6 @@
                 <li class="nav-item">
                     <a class="nav-link theme-color" href="/stats">Stats</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link theme-color" href="/vending">Vending</a>
-                </li>
             </ul>
         </div>
         <div style="float:right; margin-right:20px">
@@ -96,6 +93,14 @@
                         </ul>
                     </div>
                 </li>
+                {% if 'id' in session %}
+                <li class="nav-item">
+                    <a class="nav-link theme-color"
+                    href=
+                    "/refresh_user"
+                    >Refresh</a>
+                </li>
+                {% endif %}
                 <li class="nav-item">
                     <a class="nav-link theme-color"
                     href=

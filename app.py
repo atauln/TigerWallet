@@ -19,20 +19,10 @@ from bs4 import BeautifulSoup
 
 import mysql.connector
 
-import sentry_sdk
-from sentry_sdk.integrations.flask import FlaskIntegration
-
+# load environment variables
 load_dotenv()
 
-sentry_sdk.init(
-    dsn=os.environ['SENTRY_DSN'],
-    integrations=[
-        FlaskIntegration(),
-    ],
-    traces_sample_rate=float(os.environ['SAMPLE_RATE']),
-    auto_session_tracking=True
-)
-
+# load database connection
 MYDB = mysql.connector.connect(
     host = os.environ['DB_URL'],
     user = os.environ['DB_USERNAME'],
@@ -40,12 +30,15 @@ MYDB = mysql.connector.connect(
     database = os.environ['DB_USERNAME']
 )
 
+# intialize Flask app
 app = Flask(__name__)
 app.secret_key = os.urandom(16)
 
+# set local time zone
 os.environ['TZ'] = "America/New_York"
 time.tzset()
 
+# just in case database connection fails
 def open_db():
     """Refresh the database connection"""
     global MYDB
@@ -79,8 +72,8 @@ semester_times = {
         "start": datetime.datetime(2022, 7, 1, 0, 0, 0),
         "end": datetime.datetime(2022, 12, 14, 0, 0, 0)
     },
-    2222: {
-        "start": datetime.datetime(2023, 1, 14, 0, 0, 0),
+    2225: {
+        "start": datetime.datetime(2022, 12, 14, 0, 0, 0),
         "end": datetime.datetime(2023, 5, 14, 0, 0, 0)
     }
 }
@@ -130,9 +123,12 @@ def execute_sql(sql: str, commit: bool, fetchall: bool, value):
             if commit:
                 MYDB.commit()
             if fetchall:
-                return mycursor.fetchall()
+                result = mycursor.fetchall()
+                return result
             complete = True
-        except mysql.connector.OperationalError:
+        except (mysql.connector.OperationalError, mysql.connector.IntegrityError, mysql.connector.InterfaceError, mysql.connector.errors.ProgrammingError, ReferenceError):
+            # just in case connection fails,
+            # reconnect, and attempt again
             open_db()
 
 def remove_user(user_id: str, table="account_data"):
@@ -166,8 +162,6 @@ def check_db_value(key):
     if not check_session_value('id'):
         return False
     values = retrieve_db_values(get_session_value('id'), key)
-    if len(values) == 0:
-        return False
     if values is None or values == [] or values == "" or values == 0:
         return False
     if values[0] == '':
@@ -259,8 +253,11 @@ def verify_skey_integrity(skey):
             )
             break
         except ConnectionError:
+            # there has to be a better way to do this
+            # look into using something other than the
+            # vanilla requests library
             count += 1
-        time.sleep(.2)
+        time.sleep(.1)
 
 
 
@@ -320,7 +317,7 @@ def get_user_plans(skey, cid=105):
     try:
         options = soup.find(id="select-account").find_all('option')
     except AttributeError:
-        log_to_console("Ran into error while finding user accounts")
+        log_to_console(f"Ran into error while finding user accounts, {response.url}")
         return None
 
     return [[plan.attrs['value'], get_meal_plan_name(int(plan.attrs['value']))] for plan in options]
@@ -427,7 +424,8 @@ def process_location(raw_location):
         "Nathan": "Nathan's Soup & Salad",
         "Jerry": "Ben & Jerry's",
         "Petals": "RIT Inn Petals",
-        "Deposit": "Deposit"
+        "Deposit": "Deposit",
+        "Moves": "Transfer to Rollover"
     }
 
     for item in locations.items():
@@ -457,6 +455,45 @@ def get_spending_per_day(spending, days):
                 spending_list = spending_a[date_processed]
                 spending_list.append(purchase)
     return spending_a, a_sum, count
+
+def create_user(data):
+    sql = "INSERT INTO account_data (id, first_name, last_name, plans, skey, spending, "
+    sql += "theme, dining_id, statement_date, last_signed_in, first_signed_in) VALUES "
+    sql += "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+    val = (
+        data[0],
+        data[1],
+        data[2],
+        data[3],
+        data[4],
+        data[5],
+        data[6],
+        data[7],
+        data[8],
+        data[9],
+        data[10]     
+    )
+
+    execute_sql(sql, True, False, val)
+
+def refresh_user_data(data):
+    sql = "UPDATE account_data SET first_name = %s, last_name = %s, plans = %s, skey = %s, spending = %s, "
+    sql += "theme = %s, dining_id = %s, statement_date = %s, last_signed_in = %s, first_signed_in = %s WHERE id = %s"
+    val = (
+        data[1],
+        data[2],
+        data[3],
+        data[4],
+        data[5],
+        data[6],
+        data[7],
+        data[8],
+        data[9],
+        data[10],
+        data[0]     
+    )
+
+    execute_sql(sql, True, False, val)
 
 # def update_based_on_skey(entry):
 #     """Update the value based on an skey
@@ -612,41 +649,41 @@ def stats():
         plans=json.loads(get_db_value('plans')),
         cost_per_day=cost_per_day)
 
-@app.route('/vending', methods=['GET', 'POST'])
-def vending():
-    """Vending form"""
-
-    # give theme value if not already given
-    if not check_session_value('theme'):
-        set_session_value('theme', 'dark')
-
-    if request.method == 'POST':
-        vending_id = request.form['id']
-        vending_type = request.form['type']
-        building = request.form['building']
-        floor = request.form['floor']
-        if not (vending_id or vending_type or building or floor):
-            return render_template('vending.html', success=False)
-        open_db()
-        try:
-            sql = "INSERT INTO VendingMachineLocations (id, type, building, floor) "
-            sql += "VALUES (%s, %s, %s, %s)"
-            val = (
-                vending_id,
-                vending_type,
-                building,
-                floor
-            )
-            execute_sql(sql, True, False, val)
-            return render_template('vending.html', success=True)
-        except mysql.connector.errors.IntegrityError as ex:
-            print (ex)
-            return render_template('vending.html', duplicate=True)
-        except Exception as ex:
-            print (ex)
-            return render_template('vending.html')
-
-    return render_template('vending.html')
+##@app.route('/vending', methods=['GET', 'POST'])
+##def vending():
+##    """Vending form"""
+##
+##    # give theme value if not already given
+##    if not check_session_value('theme'):
+##        set_session_value('theme', 'dark')
+##
+##    if request.method == 'POST':
+##        vending_id = request.form['id']
+##        vending_type = request.form['type']
+##        building = request.form['building']
+##        floor = request.form['floor']
+##        if not (vending_id or vending_type or building or floor):
+##            return render_template('vending.html', success=False)
+##        open_db()
+##        try:
+##            sql = "INSERT INTO VendingMachineLocations (id, type, building, floor) "
+##            sql += "VALUES (%s, %s, %s, %s)"
+##            val = (
+##                vending_id,
+##                vending_type,
+##                building,
+##                floor
+##            )
+##            execute_sql(sql, True, False, val)
+##            return render_template('vending.html', success=True)
+##        except mysql.connector.errors.IntegrityError as ex:
+##            print (ex)
+##            return render_template('vending.html', duplicate=True)
+##        except Exception as ex:
+##            print (ex)
+##            return render_template('vending.html')
+##
+##    return render_template('vending.html')
 
 
 
@@ -681,10 +718,46 @@ def auth():
         else:
             plans = get_user_plans(skey)
             spending = force_retrieve_spending(skey, plans[0][0], 'csv')
-            sql = "INSERT INTO account_data (id, first_name, last_name, plans, skey, spending, "
-            sql += "theme, dining_id, statement_date, last_signed_in, first_signed_in) VALUES "
-            sql += "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-            val = (
+            create_user(
+                [
+                    get_session_value('id'),
+                    account_info[1],
+                    account_info[2],
+                    str(plans),
+                    skey,
+                    str(spending),
+                    get_session_value('theme'),
+                    plans[0][0],
+                    current_datetime,
+                    current_datetime,
+                    current_datetime
+                ]
+            )
+    else:
+        log_to_console("Did not provide an 'skey'")
+
+    if 'wason' in request.args:
+        if str(request.args.get('wason'))[0] == '/':
+            return redirect(request.args.get('wason'))
+
+        log_to_console("Detected external link for wason: " +
+            f"{str(request.args.get('wason'))} | Redirecting to '/'")
+
+    return redirect('/')
+
+@app.route('/refresh_user')
+def refresh_user():
+    if check_db_value('id'):
+        skey = str(get_db_value('skey'))
+        current_datetime = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+        account_info = get_account_info(skey)
+        set_session_value('id', account_info[0])
+
+        plans = get_user_plans(skey)
+        spending = force_retrieve_spending(skey, plans[0][0], 'csv')
+
+        refresh_user_data(
+            [
                 get_session_value('id'),
                 account_info[1],
                 account_info[2],
@@ -696,19 +769,9 @@ def auth():
                 current_datetime,
                 current_datetime,
                 current_datetime
-            )
-
-            execute_sql(sql, True, False, val)
-    else:
-        log_to_console("Did not provide an 'skey'")
-
-    if 'wason' in request.args:
-        if str(request.args.get('wason'))[0] == '/':
-            return redirect(request.args.get('wason'))
-
-        log_to_console("Detected external link for wason: " +
-            f"{str(request.args.get('wason'))} | Redirecting to '/'")
-
+            ]
+        )
+    
     return redirect('/')
 
 
