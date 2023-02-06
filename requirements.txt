@@ -1,4 +1,4 @@
-beautifulsoup4==4.11.1
+beautifulsoup4==4.11.2
 blinker==1.5
 bs4==0.0.1
 certifi==2022.12.7
