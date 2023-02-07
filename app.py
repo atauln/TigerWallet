@@ -17,18 +17,11 @@ from flask import Flask, redirect, render_template, request, session
 
 from bs4 import BeautifulSoup
 
-import mysql.connector
+import database
+
 
 # load environment variables
 load_dotenv()
-
-# load database connection
-MYDB = mysql.connector.connect(
-    host = os.environ['DB_URL'],
-    user = os.environ['DB_USERNAME'],
-    password = os.environ['DB_PASSWORD'],
-    database = os.environ['DB_USERNAME']
-)
 
 # intialize Flask app
 app = Flask(__name__)
@@ -37,17 +30,6 @@ app.secret_key = os.urandom(16)
 # set local time zone
 os.environ['TZ'] = "America/New_York"
 time.tzset()
-
-# just in case database connection fails
-def open_db():
-    """Refresh the database connection"""
-    global MYDB
-    MYDB = mysql.connector.connect(
-        host = os.environ['DB_URL'],
-        user = os.environ['DB_USERNAME'],
-        password = os.environ['DB_PASSWORD'],
-        database = os.environ['DB_USERNAME']
-    )
 
 def set_session_value(key, value):
     """Sets a session value for the user session"""
@@ -70,10 +52,10 @@ def get_session():
 semester_times = {
     2221: {
         "start": datetime.datetime(2022, 7, 1, 0, 0, 0),
-        "end": datetime.datetime(2022, 12, 14, 0, 0, 0)
+        "end": datetime.datetime(2022, 12, 15, 0, 0, 0)
     },
     2225: {
-        "start": datetime.datetime(2022, 12, 14, 0, 0, 0),
+        "start": datetime.datetime(2022, 12, 15, 0, 0, 0),
         "end": datetime.datetime(2023, 5, 14, 0, 0, 0)
     }
 }
@@ -96,6 +78,10 @@ def get_date_strings():
 
 def get_first_purchase_date(spending):
     """Returns the first date of purchase"""
+
+    # Using the second to last result is important, as 
+    # the last result is the deposit date, which is
+    # not a purchase date
     date_string = spending[-2][0].split(" ")[0]
     return datetime.datetime.strptime(date_string, "%m/%d/%Y")
 
@@ -104,105 +90,13 @@ def get_meal_plan_name(plan_id):
     meal_plans = {
         1: "TigerBucks",
         24: "Voluntary Dining",
-        29: "Rollover"
+        29: "Rollover",
+        54: "Orange Plan",
+        55: "Tiger Plan"
     }
     if plan_id in meal_plans:
         return meal_plans[plan_id]
     return "Meal Plan"
-
-def execute_sql(sql: str, commit: bool, fetchall: bool, value):
-    """Executes raw SQL"""
-    complete = False
-    while not complete:
-        try:
-            mycursor = MYDB.cursor()
-            if len(value) == 0:
-                mycursor.execute(sql)
-            else:
-                mycursor.execute(sql, value)
-            if commit:
-                MYDB.commit()
-            if fetchall:
-                result = mycursor.fetchall()
-                return result
-            complete = True
-        except (mysql.connector.OperationalError, mysql.connector.IntegrityError, mysql.connector.InterfaceError, mysql.connector.errors.ProgrammingError, ReferenceError):
-            # just in case connection fails,
-            # reconnect, and attempt again
-            open_db()
-
-def remove_user(user_id: str, table="account_data"):
-    """Removes a user from the database completely"""
-    sql = f"DELETE FROM {table} WHERE id = '{user_id}'"
-    execute_sql(sql, True, False, [])
-
-def update_db_value(col, value, account_id="", table="account_data"):
-    """Update a value for a user"""
-    if account_id == "":
-        account_id = get_account_info(get_db_value('skey'))[0]
-
-    sql = f'UPDATE {table} SET {col} = "{value}" WHERE id = "{account_id}"'
-
-    execute_sql(sql, True, False, [])
-
-def retrieve_db_values(account_id, *args):
-    """Retrieve columns from a database"""
-    sql = "SELECT "
-    for arg in args:
-        sql += str(arg) + ", "
-    sql = sql[:-2]
-    sql += f" FROM account_data WHERE id = '{account_id}'"
-
-    values = execute_sql(sql, False, True, [])
-
-    return values
-
-def check_db_value(key):
-    """Checks a value for a user in the database"""
-    if not check_session_value('id'):
-        return False
-    values = retrieve_db_values(get_session_value('id'), key)
-    if values is None or values == [] or values == "" or values == 0:
-        return False
-    if values[0] == '':
-        return False
-    if len(values[0]) > 0:
-        if values[0][0] == '':
-            return False
-    return True
-
-def get_db_value(key):
-    """Gets a value for a user in the database"""
-    return str(retrieve_db_values(get_session_value("id"), key)[0][0]).replace("'", "\"")
-
-def load_spending(acct_id):
-    """Gets spending from the db"""
-    if check_db_value('id'):
-        statement_date = datetime.datetime.strptime(
-            get_db_value('statement_date'),
-            "%m/%d/%Y %H:%M:%S"
-        )
-        deadline = statement_date + datetime.timedelta(minutes=5)
-        if deadline < datetime.datetime.now() or acct_id != get_db_value('dining_id'):
-            # if the last cached spending is over x minutes old
-            # regenerate the spending
-            update_db_value(
-                'spending',
-                str(force_retrieve_spending(get_db_value('skey'), acct_id))
-            )
-            update_db_value('statement_date', datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
-            update_db_value('dining_id', acct_id)
-    else:
-        return None
-    spending = json.loads(str(get_db_value('spending')).replace("\\", "").replace("'", "\""))
-    if len(spending) == 0: #      when trying to get spending just returned an HTML
-        remove_user(get_session_value('id'))
-        get_session().pop('id')
-    elif len(spending[0]) != 4:
-        get_session().pop('id') # edge case of skey being invalid
-    elif spending[1][3] == '':  # if account invalid, just get default plan's spending
-        return load_spending(json.loads(get_db_value('plans'))[0][0])
-    return spending
 
 def log_to_console(message):
     """Simple function to send message to the console
@@ -245,7 +139,7 @@ def verify_skey_integrity(skey):
         'acct': 1
     }
     count = 0
-    while count < 20:
+    while count < 10:
         try:
             response = requests.get(
                 "https://tigerspend.rit.edu/statementdetail.php",
@@ -258,8 +152,6 @@ def verify_skey_integrity(skey):
             # vanilla requests library
             count += 1
         time.sleep(.1)
-
-
 
     if len(response.history) != 0:
         return False
@@ -292,8 +184,7 @@ def force_retrieve_spending(skey, acct, format_output = 'csv', cid = 105):
 
     lines = response.content.decode(response.encoding).splitlines()
     reader = csv.reader(lines)
-    result = str(list(reader)).replace("Sol's", "Sols").replace("Jerry's", "Jerrys")
-    result = result.replace("Nathan's", "Nathans").replace("Gracie's", "Gracies").replace("'", "\"")
+    result = str(list(reader))
     try:
         json_result = json.loads(result)
     except json.JSONDecodeError:
@@ -320,7 +211,7 @@ def get_user_plans(skey, cid=105):
         log_to_console(f"Ran into error while finding user accounts, {response.url}")
         return None
 
-    return [[plan.attrs['value'], get_meal_plan_name(int(plan.attrs['value']))] for plan in options]
+    return [( plan.attrs['value'], get_meal_plan_name(int(plan.attrs['value'])) ) for plan in options]
 
 
 def get_account_info(skey, cid=105):
@@ -329,8 +220,8 @@ def get_account_info(skey, cid=105):
     if check_session_value('id'):
         return [
             get_session_value("id"),
-            get_db_value("first_name"),
-            get_db_value("last_name")
+            database.get_user(get_session_value("id")).first_name,
+            database.get_user(get_session_value("id")).last_name,
         ]
 
     payload = {
@@ -455,45 +346,6 @@ def get_spending_per_day(spending, days):
                 spending_list = spending_a[date_processed]
                 spending_list.append(purchase)
     return spending_a, a_sum, count
-
-def create_user(data):
-    sql = "INSERT INTO account_data (id, first_name, last_name, plans, skey, spending, "
-    sql += "theme, dining_id, statement_date, last_signed_in, first_signed_in) VALUES "
-    sql += "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-    val = (
-        data[0],
-        data[1],
-        data[2],
-        data[3],
-        data[4],
-        data[5],
-        data[6],
-        data[7],
-        data[8],
-        data[9],
-        data[10]     
-    )
-
-    execute_sql(sql, True, False, val)
-
-def refresh_user_data(data):
-    sql = "UPDATE account_data SET first_name = %s, last_name = %s, plans = %s, skey = %s, spending = %s, "
-    sql += "theme = %s, dining_id = %s, statement_date = %s, last_signed_in = %s, first_signed_in = %s WHERE id = %s"
-    val = (
-        data[1],
-        data[2],
-        data[3],
-        data[4],
-        data[5],
-        data[6],
-        data[7],
-        data[8],
-        data[9],
-        data[10],
-        data[0]     
-    )
-
-    execute_sql(sql, True, False, val)
 
 # def update_based_on_skey(entry):
 #     """Update the value based on an skey
@@ -732,6 +584,16 @@ def auth():
                     current_datetime,
                     current_datetime
                 ]
+            )
+
+            database.create_user(
+                get_session_value('id'),
+                account_info[1],
+                account_info[2],
+                account_info[1],
+                skey,
+                plans[0][0],
+                plans
             )
     else:
         log_to_console("Did not provide an 'skey'")
