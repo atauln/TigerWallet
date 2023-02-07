@@ -814,14 +814,6 @@ def logout():
             session.pop(item)
     return redirect('/')
 
-# check if user's name is daniel
-def is_daniel():
-    """Returns true if user's name is Daniel"""
-    if check_db_value('id'):
-        if get_db_value('first_name') == 'Daniel':
-            return True
-    return False
-
 @app.errorhandler(404)
 def page_not_found(ex):
     """Redirect to landing if page not found"""
