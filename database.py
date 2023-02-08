@@ -6,9 +6,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 import datetime
+from time import time
 import os
 
-url = f"mysql://{os.environ['DB_USERNAME']}:{os.environ['DB_PASSWORD']}@{os.environ['DB_URL']}/{os.environ['DB_USERNAME']}']}}"
+url = f"mysql://{os.environ['DB_USERNAME']}:{os.environ['DB_PASSWORD']}@{os.environ['DB_URL']}/{os.environ['DB_USERNAME']}"
+print(url)
 engine = create_engine(url, echo=True)
 
 class Base(DeclarativeBase):
@@ -21,24 +23,26 @@ class UserInfo(Base):
     first_name: Mapped[str] = mapped_column(String(32))
     last_name: Mapped[str] = mapped_column(String(32))
     pref_name: Mapped[str] = mapped_column(String(32))
-    first_signed_in: Mapped[datetime.datetime] = mapped_column(DateTime)
-    last_signed_in: Mapped[datetime.datetime] = mapped_column(DateTime)
+    first_sign_in: Mapped[datetime.datetime] = mapped_column(DateTime)
+    last_sign_in: Mapped[datetime.datetime] = mapped_column(DateTime)
     total_auths: Mapped[int] = mapped_column()
 
     def __repr__(self):
-        return f'UserInfo(uid={self.uid}, first_name={self.first_name}, last_name={self.last_name}, pref_name={self.pref_name}, first_signed_in={self.first_signed_in}, last_signed_in={self.last_signed_in}, total_auths={self.total_auths})'
+        return f'UserInfo(uid={self.uid}, first_name={self.first_name}, last_name={self.last_name}, pref_name={self.pref_name}, first_sign_in={self.first_sign_in}, last_sign_in={self.last_sign_in}, total_auths={self.total_auths})'
 
 class Purchases(Base):
     __tablename__ = 'Purchases'
 
-    uid: Mapped[str] = mapped_column(String(37), ForeignKey('UserInfo.uid'), primary_key=True)
+    uid: Mapped[str] = mapped_column(String(37), ForeignKey('UserInfo.uid'))
     dt: Mapped[datetime.datetime] = mapped_column(DateTime)
     location: Mapped[str] = mapped_column(String(64))
     amount: Mapped[float] = mapped_column(Float)
     new_balance: Mapped[float] = mapped_column(Float)
+    plan_id: Mapped[int] = mapped_column()
+    pid: Mapped[str] = mapped_column(String(32), primary_key=True)
 
     def __repr__(self):
-        return f'Purchases(uid={self.uid}, dt={self.dt}, location={self.location}, amount={self.amount}, new_balance={self.new_balance})'
+        return f'Purchases(uid={self.uid}, dt={self.dt}, location={self.location}, amount={self.amount}, new_balance={self.new_balance}, pid={self.pid}, plan_id={self.plan_id})'
 
 class SessionData(Base):
     __tablename__ = 'SessionData'
@@ -54,26 +58,35 @@ class SessionData(Base):
 class MealPlans(Base):
     __tablename__ = 'MealPlans'
 
-    uid: Mapped[str] = mapped_column(String(37), ForeignKey('UserInfo.uid'), primary_key=True)
+    uid: Mapped[str] = mapped_column(String(37), ForeignKey('UserInfo.uid'))
     plan_id: Mapped[int] = mapped_column()
     plan_name: Mapped[str] = mapped_column(String(64))
+    pid: Mapped[str] = mapped_column(String(32), primary_key=True)
 
     def __repr__(self):
-        return f'MealPlans(uid={self.uid}, plan_id={self.plan_id}, plan_name={self.plan_name})'
+        return f'MealPlans(uid={self.uid}, plan_id={self.plan_id}, plan_name={self.plan_name}, pid={self.pid})'
 
 
 def create_user(uid: str, first_name: str, last_name: str, pref_name: str, skey: str, default_plan: int, plans: list[tuple[int, str]]):
+    """Creates User, session data, and fills in meal plans"""
     with Session(engine) as session:
         user = UserInfo(
             uid=uid,
             first_name=first_name,
             last_name=last_name,
             pref_name=pref_name,
-            first_signed_in=datetime.datetime.now(),
-            last_signed_in=datetime.datetime.now(),
+            first_sign_in=datetime.datetime.now(),
+            last_sign_in=datetime.datetime.now(),
             total_auths=1
         )
 
+        session.add(user)
+        session.commit()
+    create_session_data(uid, skey, default_plan)
+    replace_meal_plans(uid, [MealPlans(uid=uid, plan_id=plan[0], plan_name=plan[1], pid=time()) for plan in plans])
+
+def create_session_data(uid: str, skey: str, default_plan: int):
+    with Session(engine) as session:
         session_data = SessionData(
             uid=uid,
             theme=0,
@@ -81,11 +94,23 @@ def create_user(uid: str, first_name: str, last_name: str, pref_name: str, skey:
             default_plan=default_plan
         )
 
-        meal_plans = [MealPlans(uid=uid, plan_id=plan[0], plan_name=plan[1]) for plan in plans]
-
-        session.add(user)
         session.add(session_data)
-        session.add_all(meal_plans)
+        session.commit()
+
+def update_user(uid: str, first_name: str, last_name: str, pref_name: str, skey: str):
+    with Session(engine) as session:
+        session.query(UserInfo).filter(UserInfo.uid == uid).update({
+            UserInfo.first_name: first_name,
+            UserInfo.last_name: last_name,
+            UserInfo.pref_name: pref_name,
+            UserInfo.last_sign_in: datetime.datetime.now()
+        })
+
+        session.query(SessionData).filter(SessionData.uid == uid).update({
+            SessionData.theme: 0,
+            SessionData.skey: skey,
+        })
+
         session.commit()
 
 def remove_user(uid: str):
@@ -122,6 +147,17 @@ def add_purchases(purchases: list[Purchases]):
         session.add_all(purchases)
         session.commit()
 
+def safely_add_purchases(uid: str, purchases: list[Purchases]):
+    with Session(engine) as session:
+        session.query(Purchases).filter(Purchases.uid == uid).delete()
+        session.add_all(purchases)
+        session.commit()
+
+def add_meal_plans(meal_plans: list[MealPlans]):
+    with Session(engine) as session:
+        session.add_all(meal_plans)
+        session.commit()
+
 def replace_meal_plans(uid: str, meal_plans: list[MealPlans]):
     with Session(engine) as session:
         session.query(MealPlans).filter(MealPlans.uid == uid).delete()
@@ -137,14 +173,24 @@ def update_session_data(uid: str, theme: int, skey: str, default_plan: int):
         })
         session.commit()
 
-def update_user(uid: str, first_name: str, last_name: str, pref_name: str, account_number: int):
+def log_user_auth(uid: str):
     with Session(engine) as session:
         session.query(UserInfo).filter(UserInfo.uid == uid).update({
-            UserInfo.first_name: first_name,
-            UserInfo.last_name: last_name,
-            UserInfo.pref_name: pref_name,
+            UserInfo.last_sign_in: datetime.datetime.now(),
+            UserInfo.total_auths: UserInfo.total_auths + 1
         })
         session.commit()
+
+def update_skey(uid: str, skey: str):
+    with Session(engine) as session:
+        session.query(SessionData).filter(SessionData.uid == uid).update({
+            SessionData.skey: skey
+        })
+        session.commit()
+
+def user_exists(uid: str):
+    with Session(engine) as session:
+        return session.query(UserInfo).filter(UserInfo.uid == uid).first() is not None
 
 def change_user_theme(uid: str, theme: int):
     with Session(engine) as session:

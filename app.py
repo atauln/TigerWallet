@@ -41,7 +41,9 @@ def check_session_value(key):
 
 def get_session_value(key):
     """Return a value from the session"""
-    return session[key]
+    if check_session_value(key):
+        return session[key]
+    return None
 
 def get_session():
     """Get the session object"""
@@ -184,14 +186,40 @@ def force_retrieve_spending(skey, acct, format_output = 'csv', cid = 105):
 
     lines = response.content.decode(response.encoding).splitlines()
     reader = csv.reader(lines)
-    result = str(list(reader))
-    try:
-        json_result = json.loads(result)
-    except json.JSONDecodeError:
-        return '[]'
+    result = list(reader)
+    #try:
+    #    json_result = json.loads(result)
+    #except json.JSONDecodeError:
+    #    print (f'failed lol {result}')
+    #    return '[]'
 
-    return json_result
+    print (f'JSON result: {result}')
+    return result
 
+def get_formatted_spending(sess_data: database.SessionData) -> list[database.Purchases]:
+    """Return an array of spending information in the form of Purchase items"""
+    response = force_retrieve_spending(sess_data.skey, sess_data.default_plan)
+
+    result = []
+    for item in response:
+        if item[0] == "Date":
+            continue
+        date = datetime.datetime.strptime(item[0], "%m/%d/%Y %H:%M%p")
+        location = process_location(item[1])
+        amount = -1 * float(item[2])
+        new_balance = float(item[3])
+
+        result.append(database.Purchases(
+            uid=sess_data.uid,
+            dt=date,
+            location=location,
+            amount=amount,
+            new_balance=new_balance,
+            plan_id=sess_data.default_plan,
+            pid=time.time()
+        ))
+
+    return result
 
 def get_user_plans(skey, cid=105):
     """Get a list of all the user's plans and return the first one."""
@@ -209,7 +237,6 @@ def get_user_plans(skey, cid=105):
         options = soup.find(id="select-account").find_all('option')
     except AttributeError:
         log_to_console(f"Ran into error while finding user accounts, {response.url}")
-        return None
 
     return [( plan.attrs['value'], get_meal_plan_name(int(plan.attrs['value'])) ) for plan in options]
 
@@ -244,21 +271,21 @@ def get_account_info(skey, cid=105):
         str(name[1]).replace("'", ""), # last_name
     ]
 
-    return account_data
+    return account_data # [account_id, first_name, last_name]
 
 
 
-def get_daily_spending(csv_file):
+def get_daily_spending(purchases):
     """Process CSV output from TigerSpend into array of total costs per day"""
     daily_spent = {}
 
-    for record in csv_file:
+    for purchase in purchases:
         # keys in the dictionary are the date on which transactions occurred
-        key = record[0].split(" ")[0]
+        key = purchase.dt.strftime("%-m/%d/%Y")
         try:
             if not key in daily_spent:
                 daily_spent[key] = 0
-            daily_spent[key] -= round(float(record[2]), 2)
+            daily_spent[key] += round(purchase.amount, 2)
         except ValueError:
             continue
         except IndexError:
@@ -266,9 +293,9 @@ def get_daily_spending(csv_file):
     return daily_spent
 
 
-def get_spending_over_time(csv_file, days=7, backwards_offset=0):
+def get_spending_over_time(purchases, days=7, backwards_offset=0):
     """Return cost over a certain pay period."""
-    daily_spent = get_daily_spending(csv_file)
+    daily_spent = get_daily_spending(purchases)
 
     money_spent = 0
     today = datetime.datetime.today()
@@ -388,10 +415,11 @@ def landing():
     # give theme value if not already given
     if not check_session_value('theme'):
         set_session_value('theme', 'dark')
-    if check_db_value('id'):
-        spending = load_spending(get_db_value('dining_id'))
-    # check if the skey is contained within the db
-    if not check_db_value('id'):
+    
+    if database.user_exists(get_session_value('id')):
+        spending = get_formatted_spending(database.get_session_data(get_session_value('id')))
+        # check if the skey is contained within the db
+    else:
         log_to_console("id was invalid")
         if check_session_value('id'):
             get_session().pop('id')
@@ -404,7 +432,7 @@ def landing():
     delta = lastdate - currentdate
 
     #starting_balance = float(spending[-1][3]) - float(spending[-1][2])
-    current_balance = float(spending[1][3])
+    current_balance = float(spending[0].new_balance)
 
     # get daily budget based off balance in account yesterday
     daily_budget = round(
@@ -418,10 +446,12 @@ def landing():
         get_spending_over_time(spending, 1),
         get_spending_over_time(spending, 7, 1),
         get_spending_over_time(spending, 30, 1)]
+    
+    database.safely_add_purchases(get_session_value('id'), spending)
 
     return render_template("index.html", session=get_session(), data=data,
-        records=spending, plan_name=get_meal_plan_name(get_db_value('dining_id')),
-        plans=json.loads(get_db_value('plans')))
+        records=spending, plan_name=get_meal_plan_name(database.get_session_data(get_session_value('id')).default_plan),
+        plans=database.get_meal_plans(get_session_value('id')))
 
 
 @app.route('/purchases')
@@ -432,11 +462,10 @@ def purchases():
     if not check_session_value('theme'):
         set_session_value('theme', 'dark')
 
-    if check_db_value('id'):
-        spending = load_spending(get_db_value('dining_id'))
-
-    # check if the skey is contained within the db
-    if not check_db_value('id'):
+    if database.user_exists(get_session_value('id')):
+        spending = get_formatted_spending(database.get_session_data(get_session_value('id')))
+        # check if the skey is contained within the db
+    else:
         log_to_console("id was invalid")
         if check_session_value('id'):
             get_session().pop('id')
@@ -449,7 +478,7 @@ def purchases():
     spending_per_day, _, _ = get_spending_per_day(spending, delta.days)
 
     return render_template("purchases.html", session=get_session(), spending=spending_per_day,
-            plans=json.loads(get_db_value('plans')))
+            plans=database.get_meal_plans(get_session_value('id')))
 
 @app.route('/stats')
 def stats():
@@ -459,11 +488,10 @@ def stats():
     if not check_session_value('theme'):
         set_session_value('theme', 'dark')
 
-    if check_db_value('id'):
-        spending = load_spending(get_db_value('dining_id'))
-
-    # check if the skey is contained within the db
-    if not check_db_value('id'):
+    if database.user_exists(get_session_value('id')):
+        spending = get_formatted_spending(database.get_session_data(get_session_value('id')))
+        # check if the skey is contained within the db
+    else:
         log_to_console("id was invalid")
         if check_session_value('id'):
             get_session().pop('id')
@@ -475,8 +503,8 @@ def stats():
     sincefirst = currentdate - firstdate
     totaldays = enddate - firstdate
 
-    balance = float(list(spending)[1][3])
-    deposit = float(str(list(spending)[-1][2]).strip("-"))
+    balance = float(spending[0].new_balance)
+    deposit = -1 * float(spending[-1].amount)
     recommended_balance = (deposit / totaldays.days) * sincefirst.days
 
     money_spent_per_day = {}
@@ -498,7 +526,7 @@ def stats():
     return render_template("stats.html", session=get_session(),
         balance=balance, deposit=deposit,
         recommended_balance = recommended_balance,
-        plans=json.loads(get_db_value('plans')),
+        plans=database.get_meal_plans(get_session_value('id')),
         cost_per_day=cost_per_day)
 
 ##@app.route('/vending', methods=['GET', 'POST'])
@@ -544,7 +572,7 @@ def accounts():
     """Method run upon opening the Accounts tab
     args provided: plan (dining_id)"""
 
-    if check_db_value('id') and 'plan' in request.args:
+    if check_session_value('id') and 'plan' in request.args.keys():
         load_spending(int(request.args.get('plan')))
         update_db_value('dining_id', int(request.args.get('plan')))
 
@@ -560,31 +588,15 @@ def auth():
 
     if 'skey' in request.args.keys():
         skey = str(request.args.get('skey'))
-        current_datetime = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
         account_info = get_account_info(skey)
         set_session_value('id', account_info[0])
 
-        if check_db_value('id'):
-            update_db_value('skey', skey)
-            update_db_value('last_signed_in', current_datetime)
+        if database.user_exists(account_info[0]):
+            database.log_user_auth(account_info[0])
+            database.update_skey(account_info[0], skey)
+
         else:
             plans = get_user_plans(skey)
-            spending = force_retrieve_spending(skey, plans[0][0], 'csv')
-            create_user(
-                [
-                    get_session_value('id'),
-                    account_info[1],
-                    account_info[2],
-                    str(plans),
-                    skey,
-                    str(spending),
-                    get_session_value('theme'),
-                    plans[0][0],
-                    current_datetime,
-                    current_datetime,
-                    current_datetime
-                ]
-            )
 
             database.create_user(
                 get_session_value('id'),
@@ -595,6 +607,11 @@ def auth():
                 plans[0][0],
                 plans
             )
+            # no database queries before this point
+            print("created user!")
+            database.add_purchases(get_formatted_spending(database.get_session_data(get_session_value('id'))))
+            print("Added purchases!")
+
     else:
         log_to_console("Did not provide an 'skey'")
 
@@ -609,29 +626,26 @@ def auth():
 
 @app.route('/refresh_user')
 def refresh_user():
-    if check_db_value('id'):
-        skey = str(get_db_value('skey'))
-        current_datetime = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    if database.user_exists(get_session_value('id')):
+        skey = str(database.get_session_data(get_session_value('id')).skey)
         account_info = get_account_info(skey)
         set_session_value('id', account_info[0])
 
-        plans = get_user_plans(skey)
-        spending = force_retrieve_spending(skey, plans[0][0], 'csv')
+        database.update_user(
+            get_session_value('id'),
+            account_info[1],
+            account_info[2],
+            account_info[1],
+            skey
+        )
 
-        refresh_user_data(
-            [
-                get_session_value('id'),
-                account_info[1],
-                account_info[2],
-                str(plans),
-                skey,
-                str(spending),
-                get_session_value('theme'),
-                plans[0][0],
-                current_datetime,
-                current_datetime,
-                current_datetime
-            ]
+        database.replace_meal_plans(
+            get_session_value('id'),
+            [database.MealPlans(
+                uid=get_session_value('id'),
+                plan_id=plan[0],
+                plan_name=plan[1]
+            ) for plan in get_user_plans(skey)]
         )
     
     return redirect('/')
@@ -640,13 +654,18 @@ def refresh_user():
 @app.route('/switch_theme')
 def switch_theme():
     """Closed URL for switching the site's theme."""
-    if check_db_value('id'):
-        theme = get_db_value('theme')
-        if theme == 'dark':
-            update_db_value('theme', 'light')
+
+    # give theme value if not already given
+    # light = 1
+    # dark = 0
+    if database.user_exists(get_session_value('id')):
+        session_data = database.get_session_data(get_session_value('id'))
+        theme = session_data.theme
+        if theme == 0:
+            database.change_user_theme(get_session_value('id'), 1)
         else:
-            update_db_value('theme', 'dark')
-        set_session_value('theme', get_db_value('theme'))
+            database.change_user_theme(get_session_value('id'), 0)
+        set_session_value('theme', session_data.theme)
     else:
         if not check_session_value('theme'):
             set_session_value('theme', 'dark')
