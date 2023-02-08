@@ -7,7 +7,6 @@ import datetime
 import os
 import time
 import csv
-import json
 from threading import Thread
 import requests
 
@@ -43,7 +42,7 @@ def get_session_value(key):
     """Return a value from the session"""
     if check_session_value(key):
         return session[key]
-    return None
+    return ""
 
 def get_session():
     """Get the session object"""
@@ -72,11 +71,7 @@ def get_datetimes():
 
 def get_date_strings():
     """Returns formatted date strings for the current semester"""
-    return (
-        semester_times[int(os.getenv("CURRENT_SEMESTER"))]["start"].strftime("%-m/%d/%Y"),
-        datetime.datetime.today().strftime("%-m/%d/%Y"),
-        semester_times[int(os.getenv("CURRENT_SEMESTER"))]["end"].strftime("%-m/%d/%Y")
-    )
+    return [date.strftime("%-m/%d/%Y") for date in get_datetimes()]
 
 def get_first_purchase_date(spending):
     """Returns the first date of purchase"""
@@ -129,6 +124,7 @@ def post_to_pings(subject_uuid, username, body):
         )
     except requests.exceptions.ChunkedEncodingError:
         log_to_console("Failed to access os env var 'PINGS_TOKEN'!")
+        return ""
 
     return response.status_code
 
@@ -164,12 +160,9 @@ def force_retrieve_spending(skey, acct, format_output = 'csv', cid = 105):
     """Return user spending information.
     This should be used very carefully, as it does not check for values."""
 
-    # check the semester ID and update start and end dates accordingly
-    start_date = semester_times[int(os.getenv("CURRENT_SEMESTER"))]["start"].strftime("%Y-%m-%d")
-    end_date = semester_times[int(os.getenv("CURRENT_SEMESTER"))]["end"].strftime("%Y-%m-%d")
+    start_date, _, end_date = get_date_strings()
 
     # send TigerSpend the payload details and get CSV back
-    # only done if the statement is not already in the session
     payload = {
         'skey': skey,
         'format': format_output,
@@ -178,11 +171,14 @@ def force_retrieve_spending(skey, acct, format_output = 'csv', cid = 105):
         'acct': acct,
         'cid': cid
     }
-
-    response = requests.get(
-        "https://tigerspend.rit.edu/statementdetail.php",
-        payload
-    )
+    try:
+        response = requests.get(
+            "https://tigerspend.rit.edu/statementdetail.php",
+            payload
+        )
+    except requests.exceptions.ConnectionError:
+        log_to_console("Failed to connect to TigerSpend!")
+        return '[]'
 
     lines = response.content.decode(response.encoding).splitlines()
     reader = csv.reader(lines)
