@@ -16,6 +16,8 @@ from flask import Flask, redirect, render_template, request, session
 
 from bs4 import BeautifulSoup
 
+import copy
+
 import database
 
 
@@ -448,12 +450,14 @@ def landing():
         get_spending_over_time(spending, 1),
         get_spending_over_time(spending, 7, 1),
         get_spending_over_time(spending, 30, 1)]
-    
-    database.safely_add_purchases(get_session_value('id'), spending, database.get_session_data(get_session_value('id')).default_plan)
 
-    return render_template("index.html", session=get_session(), data=data,
+    view = render_template("index.html", session=get_session(), data=data,
         records=spending, plan_name=get_meal_plan_name(database.get_session_data(get_session_value('id')).default_plan),
         plans=database.get_meal_plans(get_session_value('id')))
+
+    database.safely_add_purchases(get_session_value('id'), spending)
+
+    return view
 
 
 @app.route('/purchases')
@@ -576,8 +580,7 @@ def accounts():
 
     if check_session_value('id') and 'plan' in request.args.keys():
         plan_id = int(request.args.get('plan'))
-        database.safely_add_purchases(get_session_value('id'), get_formatted_spending(database.get_session_data(get_session_value('id')), plan_id), plan_id)
-        database.change_default_plan(get_session_value('id'), int(request.args.get('plan')))
+        database.change_default_plan(get_session_value('id'), plan_id)
 
     return redirect('/')
 
@@ -611,7 +614,6 @@ def auth():
                 plans
             )
             # no database queries before this point
-            database.add_purchases(get_formatted_spending(database.get_session_data(get_session_value('id')), plans[0][0]))
 
     else:
         log_to_console("Did not provide an 'skey'")
