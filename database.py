@@ -132,9 +132,9 @@ def get_meal_plans(uid: str):
     with Session(engine) as session:
         return session.query(MealPlans).filter(MealPlans.uid == uid).all()
 
-def get_purchases(uid: str):
+def get_purchases(uid: str, plan_id: int):
     with Session(engine) as session:
-        return session.query(Purchases).filter(Purchases.uid == uid).all()
+        return session.query(Purchases).filter(Purchases.uid == uid).filter(Purchases.plan_id == plan_id).all()
 
 def add_purchase(purchase: Purchases):
     with Session(engine) as session:

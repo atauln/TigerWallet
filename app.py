@@ -52,6 +52,8 @@ def get_session():
 
 # dictionary of datetimes for all semesters
 # select the currect semester with evironmental variables
+first_date = datetime.datetime(2017, 7, 1, 0, 0, 0)
+
 semester_times = {
     2221: {
         "start": datetime.datetime(2022, 7, 1, 0, 0, 0),
@@ -165,13 +167,13 @@ def force_retrieve_spending(skey, acct, format_output = 'csv', cid = 105):
     """Return user spending information.
     This should be used very carefully, as it does not check for values."""
 
-    start_date, _, end_date = [date.strftime("%Y-%m-%d") for date in get_datetimes()]
+    _, _, end_date = [date.strftime("%Y-%m-%d") for date in get_datetimes()]
 
     # send TigerSpend the payload details and get CSV back
     payload = {
         'skey': skey,
         'format': format_output,
-        'startdate': start_date,
+        'startdate': first_date.strftime("%Y-%m-%d"),
         'enddate': end_date,
         'acct': acct,
         'cid': cid
@@ -204,6 +206,8 @@ def get_formatted_spending(sess_data: database.SessionData, plan_id: int) -> lis
     for item in response:
         if item[0] == "Date":
             continue
+        if 'transaction' in item[0]:
+            break
         date = datetime.datetime.strptime(item[0], "%m/%d/%Y %H:%M%p")
         location = item[1]
         amount = -1 * float(item[2])
@@ -358,19 +362,14 @@ def get_spending_per_day(spending: list[database.Purchases], days):
     """Uses the spending to generate a dictionary of spending per day"""
     a_sum = 0
     count = 0
-    spending_a = {}
-    for i in range(days):
-        date = datetime.datetime.today() - datetime.timedelta(days=i)
-        if date not in spending_a:
-            spending_a[date] = []
-        for purchase in list(spending):
-            if purchase.dt.strftime("%m/%d/%Y") == date.strftime("%m/%d/%Y"):
-                purchase.location = process_location(purchase.location)
-                purchase.amount *= -1
-                a_sum += purchase.amount
-                count += 1
-                spending_list = spending_a[date]
-                spending_list.append(purchase)
+    spending_a = { (datetime.datetime.today() - datetime.timedelta(days=i)).date(): [] for i in range(days)}
+    for purchase in list(spending):
+        purchase.location = process_location(purchase.location)
+        purchase.amount *= -1
+        a_sum += purchase.amount
+        count += 1
+        spending_list = spending_a[purchase.dt.date()]
+        spending_list.append(purchase)
     return spending_a, a_sum, count
 
 # def update_based_on_skey(entry):
@@ -428,12 +427,20 @@ def landing():
         return render_template("index.html", session=get_session(),
             redir=f"https://tigerspend.rit.edu/login.php?wason={request.url_root}auth")
 
-    _, currentdate, lastdate = get_datetimes()
+    firstdate, currentdate, lastdate = get_datetimes()
 
     # get the number of days until the end of the semester
     delta = lastdate - currentdate
 
-    #starting_balance = float(spending[-1][3]) - float(spending[-1][2])
+    starting_balance = 0
+    for item in spending:
+        if item.dt > firstdate:
+            if item.location == 'Deposit':
+                starting_balance = item.new_balance
+                break
+            elif 'Moves' in item.location and item.new_balance != 0:
+                starting_balance = item.new_balance
+                break
     current_balance = float(spending[0].new_balance)
 
     # get daily budget based off balance in account yesterday
@@ -451,7 +458,7 @@ def landing():
 
     view = render_template("index.html", session=get_session(), data=data,
         records=spending, plan_name=get_meal_plan_name(database.get_session_data(get_session_value('id')).default_plan),
-        plans=database.get_meal_plans(get_session_value('id')))
+        plans=database.get_meal_plans(get_session_value('id')), starting_balance=starting_balance)
 
     database.safely_add_purchases(get_session_value('id'), spending)
 
@@ -467,7 +474,10 @@ def purchases():
         set_session_value('theme', 'dark')
     
     if database.user_exists(get_session_value('id')):
-        spending = get_formatted_spending(database.get_session_data(get_session_value('id')), database.get_session_data(get_session_value('id')).default_plan)
+        start = time.perf_counter()
+        spending = database.get_purchases(get_session_value('id'), database.get_session_data(get_session_value('id')).default_plan)
+        end = time.perf_counter()
+        log_to_console(f"Time to get purchases: {end - start}")
         if spending == []:
             get_session().pop('id')
             return redirect('/')
@@ -477,15 +487,19 @@ def purchases():
             get_session().pop('id')
         return redirect('/')
 
-    firstdate, currentdate, _ = get_datetimes()
-    delta = currentdate - firstdate
+    _, currentdate, _ = get_datetimes()
+    delta = currentdate - first_date
 
+    start = time.perf_counter()
     spending_per_day, _, _ = get_spending_per_day(spending, delta.days)
+    end = time.perf_counter()
+    log_to_console(f"Time to get spending per day: {end - start}")
 
+    start = time.perf_counter()
     view = render_template("purchases.html", session=get_session(), spending=spending_per_day,
             plans=database.get_meal_plans(get_session_value('id')))
-    
-    database.safely_add_purchases(get_session_value('id'), spending)
+    end = time.perf_counter()
+    log_to_console(f"Time to render template: {end - start}")
 
     return view
 
@@ -498,7 +512,7 @@ def stats():
         set_session_value('theme', 'dark')
 
     if database.user_exists(get_session_value('id')):
-        spending = get_formatted_spending(database.get_session_data(get_session_value('id')), database.get_session_data(get_session_value('id')).default_plan)
+        spending = database.get_purchases(get_session_value('id'), database.get_session_data(get_session_value('id')).default_plan)
         if spending == []:
             get_session().pop('id')
             return redirect('/')
@@ -534,15 +548,11 @@ def stats():
         for val in value:
             cost_per_day[key] -= float(val.amount)
 
-    view = render_template("stats.html", session=get_session(),
+    return render_template("stats.html", session=get_session(),
             balance=balance, deposit=deposit,
             recommended_balance = recommended_balance,
             plans=database.get_meal_plans(get_session_value('id')),
             cost_per_day=cost_per_day)
-
-    database.safely_add_purchases(get_session_value('id'), spending)
-
-    return view
 
 ##@app.route('/vending', methods=['GET', 'POST'])
 ##def vending():
