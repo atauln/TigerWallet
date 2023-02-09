@@ -71,7 +71,11 @@ def get_datetimes():
 
 def get_date_strings():
     """Returns formatted date strings for the current semester"""
-    return [date.strftime("%-m/%d/%Y") for date in get_datetimes()]
+    return (
+        semester_times[int(os.getenv("CURRENT_SEMESTER"))]["start"].strftime("%-m/%d/%Y"),
+        datetime.datetime.today().strftime("%-m/%d/%Y"),
+        semester_times[int(os.getenv("CURRENT_SEMESTER"))]["end"].strftime("%-m/%d/%Y")
+    )
 
 def get_first_purchase_date(spending):
     """Returns the first date of purchase"""
@@ -160,7 +164,7 @@ def force_retrieve_spending(skey, acct, format_output = 'csv', cid = 105):
     """Return user spending information.
     This should be used very carefully, as it does not check for values."""
 
-    start_date, _, end_date = get_date_strings()
+    start_date, _, end_date = [date.strftime("%Y-%m-%d") for date in get_datetimes()]
 
     # send TigerSpend the payload details and get CSV back
     payload = {
@@ -189,12 +193,11 @@ def force_retrieve_spending(skey, acct, format_output = 'csv', cid = 105):
     #    print (f'failed lol {result}')
     #    return '[]'
 
-    print (f'JSON result: {result}')
     return result
 
-def get_formatted_spending(sess_data: database.SessionData) -> list[database.Purchases]:
+def get_formatted_spending(sess_data: database.SessionData, plan_id: int) -> list[database.Purchases]:
     """Return an array of spending information in the form of Purchase items"""
-    response = force_retrieve_spending(sess_data.skey, sess_data.default_plan)
+    response = force_retrieve_spending(sess_data.skey, plan_id)
 
     result = []
     for item in response:
@@ -409,11 +412,14 @@ def get_spending_per_day(spending, days):
 def landing():
     """Method run upon landing on the main page."""
     # give theme value if not already given
+
+    print (session)
+
     if not check_session_value('theme'):
         set_session_value('theme', 'dark')
     
     if database.user_exists(get_session_value('id')):
-        spending = get_formatted_spending(database.get_session_data(get_session_value('id')))
+        spending = get_formatted_spending(database.get_session_data(get_session_value('id')), database.get_session_data(get_session_value('id')).default_plan)
         # check if the skey is contained within the db
     else:
         log_to_console("id was invalid")
@@ -443,7 +449,7 @@ def landing():
         get_spending_over_time(spending, 7, 1),
         get_spending_over_time(spending, 30, 1)]
     
-    database.safely_add_purchases(get_session_value('id'), spending)
+    database.safely_add_purchases(get_session_value('id'), spending, database.get_session_data(get_session_value('id')).default_plan)
 
     return render_template("index.html", session=get_session(), data=data,
         records=spending, plan_name=get_meal_plan_name(database.get_session_data(get_session_value('id')).default_plan),
@@ -569,8 +575,9 @@ def accounts():
     args provided: plan (dining_id)"""
 
     if check_session_value('id') and 'plan' in request.args.keys():
-        load_spending(int(request.args.get('plan')))
-        update_db_value('dining_id', int(request.args.get('plan')))
+        plan_id = int(request.args.get('plan'))
+        database.safely_add_purchases(get_session_value('id'), get_formatted_spending(database.get_session_data(get_session_value('id')), plan_id), plan_id)
+        database.change_default_plan(get_session_value('id'), int(request.args.get('plan')))
 
     return redirect('/')
 
@@ -604,9 +611,7 @@ def auth():
                 plans
             )
             # no database queries before this point
-            print("created user!")
-            database.add_purchases(get_formatted_spending(database.get_session_data(get_session_value('id'))))
-            print("Added purchases!")
+            database.add_purchases(get_formatted_spending(database.get_session_data(get_session_value('id')), plans[0][0]))
 
     else:
         log_to_console("Did not provide an 'skey'")
@@ -640,7 +645,8 @@ def refresh_user():
             [database.MealPlans(
                 uid=get_session_value('id'),
                 plan_id=plan[0],
-                plan_name=plan[1]
+                plan_name=plan[1],
+                pid=time.time()
             ) for plan in get_user_plans(skey)]
         )
     
@@ -657,10 +663,11 @@ def switch_theme():
     if database.user_exists(get_session_value('id')):
         session_data = database.get_session_data(get_session_value('id'))
         theme = session_data.theme
-        if theme == 0:
-            database.change_user_theme(get_session_value('id'), 1)
+        if theme == 'dark':
+            database.change_user_theme(get_session_value('id'), 'light')
         else:
-            database.change_user_theme(get_session_value('id'), 0)
+            database.change_user_theme(get_session_value('id'), 'dark')
+        session_data = database.get_session_data(get_session_value('id'))
         set_session_value('theme', session_data.theme)
     else:
         if not check_session_value('theme'):

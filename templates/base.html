@@ -116,7 +116,7 @@
                         <ul class="dropdown-menu">
                             {% if 'id' in session %}
                             {% for plan in plans %}
-                            <a class="dropdown-item" href="/accounts?plan={{ plan[0] }}">{{ plan[1] }}</a>
+                            <a class="dropdown-item" href="/accounts?plan={{ plan.plan_id }}">{{ plan.plan_name }}</a>
                             {% else %}
                             <a class="dropdown-item" href="#">N/A</a>
                             {% endfor %}

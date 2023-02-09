@@ -10,7 +10,6 @@ from time import time
 import os
 
 url = f"mysql://{os.environ['DB_USERNAME']}:{os.environ['DB_PASSWORD']}@{os.environ['DB_URL']}/{os.environ['DB_USERNAME']}"
-print(url)
 engine = create_engine(url, echo=True)
 
 class Base(DeclarativeBase):
@@ -48,7 +47,7 @@ class SessionData(Base):
     __tablename__ = 'SessionData'
 
     uid: Mapped[str] = mapped_column(String(37), ForeignKey('UserInfo.uid'), primary_key=True)
-    theme: Mapped[int] = mapped_column()
+    theme: Mapped[str] = mapped_column()
     skey: Mapped[str] = mapped_column(String(32))
     default_plan: Mapped[int] = mapped_column()
 
@@ -89,7 +88,7 @@ def create_session_data(uid: str, skey: str, default_plan: int):
     with Session(engine) as session:
         session_data = SessionData(
             uid=uid,
-            theme=0,
+            theme='dark',
             skey=skey,
             default_plan=default_plan
         )
@@ -107,7 +106,7 @@ def update_user(uid: str, first_name: str, last_name: str, pref_name: str, skey:
         })
 
         session.query(SessionData).filter(SessionData.uid == uid).update({
-            SessionData.theme: 0,
+            SessionData.theme: 'dark',
             SessionData.skey: skey,
         })
 
@@ -147,10 +146,11 @@ def add_purchases(purchases: list[Purchases]):
         session.add_all(purchases)
         session.commit()
 
-def safely_add_purchases(uid: str, purchases: list[Purchases]):
+def safely_add_purchases(uid: str, purchases: list[Purchases], plan_id: int):
     with Session(engine) as session:
-        session.query(Purchases).filter(Purchases.uid == uid).delete()
+        session.query(Purchases).filter(Purchases.uid == uid).filter(Purchases.plan_id == plan_id).delete()
         session.add_all(purchases)
+        session.expunge_all()
         session.commit()
 
 def add_meal_plans(meal_plans: list[MealPlans]):
@@ -164,7 +164,7 @@ def replace_meal_plans(uid: str, meal_plans: list[MealPlans]):
         session.add_all(meal_plans)
         session.commit()
 
-def update_session_data(uid: str, theme: int, skey: str, default_plan: int):
+def update_session_data(uid: str, theme: str, skey: str, default_plan: int):
     with Session(engine) as session:
         session.query(SessionData).filter(SessionData.uid == uid).update({
             SessionData.theme: theme,
@@ -192,9 +192,16 @@ def user_exists(uid: str):
     with Session(engine) as session:
         return session.query(UserInfo).filter(UserInfo.uid == uid).first() is not None
 
-def change_user_theme(uid: str, theme: int):
+def change_user_theme(uid: str, theme: str):
     with Session(engine) as session:
         session.query(SessionData).filter(SessionData.uid == uid).update({
             SessionData.theme: theme
+        })
+        session.commit()
+
+def change_default_plan(uid: str, plan_id: int):
+    with Session(engine) as session:
+        session.query(SessionData).filter(SessionData.uid == uid).update({
+            SessionData.default_plan: plan_id
         })
         session.commit()

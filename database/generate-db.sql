@@ -43,7 +43,7 @@ CREATE table Purchases (
 SHOW TABLES;
 CREATE table SessionData (
 	uid varchar(37),
-    theme int DEFAULT 0,
+    theme varchar(16) DEFAULT 'dark',
     skey varchar(32),
     default_plan int,
     primary key (uid),

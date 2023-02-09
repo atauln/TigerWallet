@@ -28,7 +28,7 @@
                 Current Balance ({{ plan_name }})
             </h3>
             <h1 class="primary" style="font-size:72px">{{"${:,.2f}".format(data[0])}}</h1>
-            <h6 class="foreground" style="font-size:20px">({{((data[0] * 100 / records[-1][2]|float)|round(2))}}% remaining)</h6>
+            <h6 class="foreground" style="font-size:20px">({{(-(data[0] * 100 / records[-1].amount|float)|round(2))}}% remaining)</h6>
         </div>
     </div>
     <div class="row">
