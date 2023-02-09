@@ -39,14 +39,14 @@
                 {% for date, list in spending.items() %}
                 {% if list|length != 0 %}
                 <tr>
-                    <th scope="row" colspan="6" style="text-align:center" class="datehead">{{ date }}</th>
+                    <th scope="row" colspan="6" style="text-align:center" class="datehead">{{ date.strftime("%m/%d/%Y") }}</th>
                 </tr>
                 {% endif %}
                 {% for record in list %}
                 <tr>
-                    <td scope="row">{{ (record[0]).split(" ")[1] }}</th>
-                    <td colspan="4">{{ record[1] }}</td>
-                    <td>{{ "${:,.2f}".format(record[2]) }}</td>
+                    <td scope="row">{{ record.dt.strftime("%H:%M%p") }}</th>
+                    <td colspan="4">{{ record.location }}</td>
+                    <td>{{ "${:,.2f}".format(record.amount * -1) }}</td>
                 </tr>
                 {% endfor %}
                 {% else %}

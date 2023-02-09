@@ -39,7 +39,7 @@
     </div>
 </div>
 <div class="row">
-    <div class="col-sm-5">
+    <div class="col-sm-12">
         <canvas id="dailySpendingChart" style="height:500px"></canvas>
         <script>
             const ctx = document.getElementById('dailySpendingChart').getContext('2d');
@@ -48,11 +48,11 @@
                 data: {
                     labels: [
                         {% for key, value in cost_per_day.items() %}
-                            '{{key}}',
+                            '{{key.strftime("%m/%d")}}',
                         {% endfor %}
                     ].reverse(),
                     datasets: [{
-                        label: '# of Votes',
+                        label: 'Spending Per Day',
                         data: [
                             {% for key, value in cost_per_day.items() %}
                                 {{value}},

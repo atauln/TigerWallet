@@ -10,7 +10,7 @@ from time import time
 import os
 
 url = f"mysql://{os.environ['DB_USERNAME']}:{os.environ['DB_PASSWORD']}@{os.environ['DB_URL']}/{os.environ['DB_USERNAME']}"
-engine = create_engine(url, echo=True)
+engine = create_engine(url)
 
 class Base(DeclarativeBase):
     pass
@@ -141,22 +141,12 @@ def add_purchase(purchase: Purchases):
         session.add(purchase)
         session.commit()
 
-def add_purchases(purchases: list[Purchases]):
-    with Session(engine) as session:
-        session.add_all(purchases)
-        print ("unsafe")
-        for purchase in purchases:
-            print (purchase)
-        session.commit()
-
-def safely_add_purchases(uid: str, purchases: list[Purchases]):
+def safely_add_purchases(uid: str, purchases: list[Purchases]) -> list[Purchases]:
     with Session(engine) as session:
         session.query(Purchases).filter(Purchases.uid == uid).filter(Purchases.plan_id == purchases[0].plan_id).delete()
         session.add_all(purchases)
-        print ("safe")
-        for purchase in purchases:
-            print (purchase)
         session.commit()
+        return session.query(Purchases).filter(Purchases.uid == uid).filter(Purchases.plan_id == purchases[0].plan_id).all()
 
 def add_meal_plans(meal_plans: list[MealPlans]):
     with Session(engine) as session:
