@@ -3,6 +3,9 @@ Flask application created to show users their TigerSpend account information
 in a more efficient and well-tailored manner.
 """
 
+# TODO add data for user email, text, csh username
+# TODO add notification rules for each channel
+
 import datetime
 import os
 import time
@@ -11,8 +14,6 @@ from threading import Thread
 from dotenv import load_dotenv
 
 from flask import Flask, redirect, render_template, request
-
-from bs4 import BeautifulSoup
 
 from lib import (
     log_to_console,
