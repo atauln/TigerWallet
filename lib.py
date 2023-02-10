@@ -159,7 +159,7 @@ def process_location(raw_location):
                 return item[1] + " (Online)"
             return item[1]
     print(f"got nothing for: {raw_location}")
-    return None
+    return "Unknown"
 
 def get_spending_per_day(spending: list[database.Purchases], days):
     """Uses the spending to generate a dictionary of spending per day"""
