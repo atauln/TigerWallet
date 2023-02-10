@@ -59,13 +59,13 @@ def landing():
         set_session_value('theme', 'dark')
     
     if database.user_exists(get_session_value('id')):
-        spending = get_formatted_spending(database.get_session_data(get_session_value('id')), database.get_session_data(get_session_value('id')).default_plan)
+        spending = database.get_purchases(get_session_value('id'), database.get_session_data(get_session_value('id')).default_plan)
         if spending == []:
             get_session().pop('id')
             return redirect('/')
         elif spending == None:
             for plan in database.get_meal_plans(get_session_value('id')):
-                spending = get_formatted_spending(database.get_session_data(get_session_value('id')), plan.plan_id)
+                spending = database.get_purchases(get_session_value('id'), plan.plan_id)
                 if spending != None:
                     database.change_default_plan(get_session_value('id'), plan.plan_id)
                     break
@@ -108,8 +108,6 @@ def landing():
     view = render_template("index.html", session=get_session(), data=data,
         records=spending, plan_name=get_meal_plan_name(database.get_session_data(get_session_value('id')).default_plan),
         plans=database.get_meal_plans(get_session_value('id')), starting_balance=starting_balance)
-
-    database.safely_add_purchases(get_session_value('id'), spending)
 
     return view
 
@@ -273,6 +271,12 @@ def auth():
                 plans
             )
             # no database queries before this point
+
+            for plan in plans:
+                try:
+                    database.safely_add_purchases(get_session_value('id'), get_formatted_spending(database.get_session_data(get_session_value('id')), plan[0]))
+                except Exception as e:
+                    log_to_console(f"Error adding purchases for {plan[0]}: {e}")
 
     else:
         log_to_console("Did not provide an 'skey'")

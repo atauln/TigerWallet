@@ -138,7 +138,8 @@ def get_meal_plans(uid: str):
 
 def get_purchases(uid: str, plan_id: int):
     with Session(engine) as session:
-        return session.query(Purchases).filter(Purchases.uid == uid).filter(Purchases.plan_id == plan_id).all()
+        result = session.query(Purchases).filter(Purchases.uid == uid).filter(Purchases.plan_id == plan_id).all()
+        return result if result != [] else None
 
 def add_purchase(purchase: Purchases):
     with Session(engine) as session:
@@ -148,6 +149,7 @@ def add_purchase(purchase: Purchases):
 def safely_add_purchases(uid: str, purchases: list[Purchases]):
     with Session(engine) as session:
         session.query(Purchases).filter(Purchases.uid == uid).filter(Purchases.plan_id == purchases[0].plan_id).delete()
+        #print (f"DELETED {uid} {purchases[0].plan_id}")
         session.add_all(purchases)
         session.commit()
 
