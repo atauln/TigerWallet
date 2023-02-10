@@ -48,14 +48,16 @@
                 data: {
                     labels: [
                         {% for key, value in cost_per_day.items() %}
-                            '{{key.strftime("%m/%d")}}',
+                            '{{key.strftime("%m/%d/%Y")}}',
                         {% endfor %}
                     ].reverse(),
                     datasets: [{
                         label: 'Spending Per Day',
                         data: [
                             {% for key, value in cost_per_day.items() %}
+                                {% if value > 0 %}
                                 {{value}},
+                                {% endif %}
                             {% endfor %}
                         ].reverse(),
                         backgroundColor: [

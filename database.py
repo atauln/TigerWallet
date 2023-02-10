@@ -124,6 +124,10 @@ def get_user(uid: str):
     with Session(engine) as session:
         return session.query(UserInfo).filter(UserInfo.uid == uid).first()
 
+def get_user_with_skey(skey: str):
+    with Session(engine) as session:
+        return session.query(UserInfo).join(SessionData).filter(SessionData.skey == skey).first()
+
 def get_session_data(uid: str):
     with Session(engine) as session:
         return session.query(SessionData).filter(SessionData.uid == uid).first()
@@ -141,12 +145,11 @@ def add_purchase(purchase: Purchases):
         session.add(purchase)
         session.commit()
 
-def safely_add_purchases(uid: str, purchases: list[Purchases]) -> list[Purchases]:
+def safely_add_purchases(uid: str, purchases: list[Purchases]):
     with Session(engine) as session:
         session.query(Purchases).filter(Purchases.uid == uid).filter(Purchases.plan_id == purchases[0].plan_id).delete()
         session.add_all(purchases)
         session.commit()
-        return session.query(Purchases).filter(Purchases.uid == uid).filter(Purchases.plan_id == purchases[0].plan_id).all()
 
 def add_meal_plans(meal_plans: list[MealPlans]):
     with Session(engine) as session:
@@ -200,3 +203,15 @@ def change_default_plan(uid: str, plan_id: int):
             SessionData.default_plan: plan_id
         })
         session.commit()
+
+def get_number_of_users():
+    with Session(engine) as session:
+        return session.query(UserInfo).count()
+
+def get_number_of_purchases():
+    with Session(engine) as session:
+        return session.query(Purchases).count()
+
+def get_all_sessions():
+    with Session(engine) as session:
+        return session.query(SessionData).all()
