@@ -372,6 +372,13 @@ def switch_theme():
 
     return redirect(request.args.get('wason'))
 
+@app.route('/delete_user') # Closed URL
+def delete_user():
+    """Method for deleting a user from the database."""
+    if database.user_exists(get_session_value('id')):
+        database.remove_user(get_session_value('id'))
+    return redirect('/')
+
 @app.route('/logout') # Closed URL
 def logout():
     """Allows users to log out from their session."""

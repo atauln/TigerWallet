@@ -25,7 +25,7 @@
     <p class="primary">{{description}}</p>
     <div style="margin:0; display:flex; justify-content:center">
         <input type="checkbox" class="btn-check" id="{{button_id}}" autocomplete="off">
-        <label class="btn btn-outline-primary" for="{{button_id}}">Enable</label><br>
+        <label class="btn btn-outline-primary" id="{{button_id}}-helper" for="{{button_id}}">Disabled</label><br>
     </div>
 </div>
 {% endmacro %}
@@ -52,7 +52,41 @@
 </div>
 {% endmacro %}
 
+{% macro delete_self() %}
+<!-- Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Delete Confirmation</h5>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete your account?
+            </div>
+            <div class="modal-footer">
+                <a href="/delete_user" id="deleteButton" role="button" class="btn btn-outline-danger">Delete My Account</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Button trigger modal -->
+<div class="feature col">
+    <h3 class="heading">Delete Account</h3>
+    <p class="primary">Delete your account and all associated data.</p>
+    <div style="margin:0; display:flex; justify-content:center">
+        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" tabindex="-1">
+            Delete Account
+        </button>
+    </div>
+{% endmacro %}
+
 {% block content %}
+<style>
+    .form-control:disabled {
+        opacity: 0.2;
+    }
+</style>
 <div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
     {{ togglable_feature('Credential Sync', 
     'Keep your TigerSpend credentials up to date. This option is necessary for notifications and allows for reduced login time.', 'credential-sync') }}
@@ -64,16 +98,31 @@
 <div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
     {{ email_feature('Email Address', 'Enter your email address to receive notifications.', 'email-address') }}
     {{ phone_feature('Phone Number', 'Enter your phone number to receive notifications.', 'phone-number') }}
+    {{ delete_self() }}
 </div>
 <script>
-    initialUpdate = function() {
+    var credentialSyncButton = document.getElementById('credential-sync');
+    var receiptNotificationsButton = document.getElementById('receipt-notifications');
+    var balanceNotificationsButton = document.getElementById('balance-notifications');
+    var emailAddressInput = document.getElementById('email-address');
+    var phoneNumberInput = document.getElementById('phone-number');
+
+    update = function() {
         if ($('#credential-sync').is(':checked')) {
-            document.getElementById('receipt-notifications').removeAttribute('disabled');
-            document.getElementById('balance-notifications').removeAttribute('disabled');
+            receiptNotificationsButton.removeAttribute('disabled');
+            balanceNotificationsButton.removeAttribute('disabled');
+        } else {
+            receiptNotificationsButton.setAttribute('disabled', '');
+            receiptNotificationsButton.checked = false;
+            balanceNotificationsButton.setAttribute('disabled', '');
+            balanceNotificationsButton.checked = false;
         }
         if ($('#receipt-notifications').is(':checked') || $('#balance-notifications').is(':checked')) {
-            document.getElementById('email-address').removeAttribute('disabled');
-            document.getElementById('phone-number').removeAttribute('disabled');
+            emailAddressInput.removeAttribute('disabled');
+            phoneNumberInput.removeAttribute('disabled');
+        } else {
+            emailAddressInput.setAttribute('disabled', '');
+            phoneNumberInput.setAttribute('disabled', '');
         }
     }
 
@@ -83,44 +132,26 @@
         document.getElementById('email-address').setAttribute('disabled', '');
         document.getElementById('phone-number').setAttribute('disabled', '');
 
-        initialUpdate();
+        update();
 
         $('#credential-sync').click(function() {
             console.log('clicked');
-            if ($('#credential-sync').is(':checked')) {
-                document.getElementById('receipt-notifications').removeAttribute('disabled');
-                document.getElementById('balance-notifications').removeAttribute('disabled');
-            }
-            else {
-                document.getElementById('receipt-notifications').setAttribute('disabled', '');
-                document.getElementById('balance-notifications').setAttribute('disabled', '');
-                document.getElementById('receipt-notifications').checked = false;
-                document.getElementById('balance-notifications').checked = false;
-            }
+            update();
+            document.getElementById('credential-sync-helper').innerHTML = ($('#credential-sync').is(':checked')) ? 'Enabled' : 'Disabled';
+            document.getElementById('receipt-notifications-helper').innerHTML = 'Disabled';
+            document.getElementById('balance-notifications-helper').innerHTML = 'Disabled';
         })
 
         $('#receipt-notifications').click(function() {
             console.log('clicked');
-            if ($('#receipt-notifications').is(':checked') || $('#balance-notifications').is(':checked')) {
-                document.getElementById('email-address').removeAttribute('disabled');
-                document.getElementById('phone-number').removeAttribute('disabled');
-            }
-            else {
-                document.getElementById('email-address').setAttribute('disabled', '');
-                document.getElementById('phone-number').setAttribute('disabled', '');
-            }
+            update();
+            document.getElementById('receipt-notifications-helper').innerHTML = ($('#receipt-notifications').is(':checked')) ? 'Enabled' : 'Disabled';
         })
 
         $('#balance-notifications').click(function() {
             console.log('clicked');
-            if ($('#balance-notifications').is(':checked') || $('#receipt-notifications').is(':checked')) {
-                document.getElementById('email-address').removeAttribute('disabled');
-                document.getElementById('phone-number').removeAttribute('disabled');
-            }
-            else {
-                document.getElementById('email-address').setAttribute('disabled', '');
-                document.getElementById('phone-number').setAttribute('disabled', '');
-            }
+            update();
+            document.getElementById('balance-notifications-helper').innerHTML = ($('#balance-notifications').is(':checked')) ? 'Enabled' : 'Disabled';
         })
 
         $('#email-address').change(function() {
