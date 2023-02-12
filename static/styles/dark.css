@@ -24,10 +24,10 @@ label {
     color: #ebf7f6;
 }
 .green {
-    color: #01b636
+    color: #01b636 !important;
 }
 .red {
-    color: #ff0000
+    color: #ff0000 !important;
 }
 body {
     background-size: cover;

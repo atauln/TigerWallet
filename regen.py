@@ -1,7 +1,7 @@
-import database
 import time
 
 from conn import get_formatted_spending, verify_skey_integrity
+import database
 
 from threading import Thread
 

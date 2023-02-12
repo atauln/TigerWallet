@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings{% endblock %}
+
+{% block theme_url %}
+    '/switch_theme?wason=/settings'
+{% endblock %}
+
+{% if 'theme' in session %}
+    {% block styles %}
+    {% set css_url = './styles/' + session["theme"] + '.css' %}
+    {{ url_for('static', filename=css_url) }}
+    {% endblock %}
+    {% block icon %}
+    {{ url_for('static', filename='icons/icon-'+ session['theme'] + '.png' )}}
+    {% endblock %}
+    {% block favicon %}
+    {{ url_for('static', filename='icon-' + session['theme'] + '.ico') }}
+    {% endblock %}
+{% endif %}
+
+{% macro togglable_feature(heading, description, button_id) %}
+<div class="feature col">
+    <h3 class="heading">{{heading}}</h3>
+    <p class="primary">{{description}}</p>
+    <div style="margin:0; display:flex; justify-content:center">
+        <input type="checkbox" class="btn-check" id="{{button_id}}" autocomplete="off">
+        <label class="btn btn-outline-primary" for="{{button_id}}">Enable</label><br>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro email_feature(heading, description, email_id) %}
+<div class="feature col">
+    <h3 class="heading">{{heading}}</h3>
+    <p class="primary">{{description}}</p>
+    <div style="margin:0; display:flex; justify-content:center">
+        <input type="email" class="form-control" id="{{email_id}}">
+    </div>
+    <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small>
+</div>
+{% endmacro %}
+
+{% macro phone_feature(heading, description, phone_id) %}
+<div class="feature col">
+    <h3 class="heading">{{heading}}</h3>
+    <p class="primary">{{description}}</p>
+    <div style="margin:0; display:flex; justify-content:center">
+        <input type="tel" class="form-control" id="{{phone_id}}">
+    </div>
+    <small id="phoneHelp" class="form-text text-muted">We'll never share your phone number.</small>
+</div>
+{% endmacro %}
+
+{% block content %}
+<div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
+    {{ togglable_feature('Credential Sync', 
+    'Keep your TigerSpend credentials up to date. This option is necessary for notifications and allows for reduced login time.', 'credential-sync') }}
+    {{ togglable_feature('Transaction Notifications',
+    'Get notified when your account makes a new purchase. You can receive notifications via email or text message.', 'receipt-notifications') }}
+    {{ togglable_feature('Balance Notifications',
+    'Get notified when your account balance is too far above where it should be. You can receive notifications via email or text message.', 'balance-notifications') }}
+</div>
+<div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
+    {{ email_feature('Email Address', 'Enter your email address to receive notifications.', 'email-address') }}
+    {{ phone_feature('Phone Number', 'Enter your phone number to receive notifications.', 'phone-number') }}
+</div>
+<script>
+    initialUpdate = function() {
+        if ($('#credential-sync').is(':checked')) {
+            document.getElementById('receipt-notifications').removeAttribute('disabled');
+            document.getElementById('balance-notifications').removeAttribute('disabled');
+        }
+        if ($('#receipt-notifications').is(':checked') || $('#balance-notifications').is(':checked')) {
+            document.getElementById('email-address').removeAttribute('disabled');
+            document.getElementById('phone-number').removeAttribute('disabled');
+        }
+    }
+
+    $(document).ready(function() {
+        document.getElementById('receipt-notifications').setAttribute('disabled', '');
+        document.getElementById('balance-notifications').setAttribute('disabled', '');
+        document.getElementById('email-address').setAttribute('disabled', '');
+        document.getElementById('phone-number').setAttribute('disabled', '');
+
+        initialUpdate();
+
+        $('#credential-sync').click(function() {
+            console.log('clicked');
+            if ($('#credential-sync').is(':checked')) {
+                document.getElementById('receipt-notifications').removeAttribute('disabled');
+                document.getElementById('balance-notifications').removeAttribute('disabled');
+            }
+            else {
+                document.getElementById('receipt-notifications').setAttribute('disabled', '');
+                document.getElementById('balance-notifications').setAttribute('disabled', '');
+                document.getElementById('receipt-notifications').checked = false;
+                document.getElementById('balance-notifications').checked = false;
+            }
+        })
+
+        $('#receipt-notifications').click(function() {
+            console.log('clicked');
+            if ($('#receipt-notifications').is(':checked') || $('#balance-notifications').is(':checked')) {
+                document.getElementById('email-address').removeAttribute('disabled');
+                document.getElementById('phone-number').removeAttribute('disabled');
+            }
+            else {
+                document.getElementById('email-address').setAttribute('disabled', '');
+                document.getElementById('phone-number').setAttribute('disabled', '');
+            }
+        })
+
+        $('#balance-notifications').click(function() {
+            console.log('clicked');
+            if ($('#balance-notifications').is(':checked') || $('#receipt-notifications').is(':checked')) {
+                document.getElementById('email-address').removeAttribute('disabled');
+                document.getElementById('phone-number').removeAttribute('disabled');
+            }
+            else {
+                document.getElementById('email-address').setAttribute('disabled', '');
+                document.getElementById('phone-number').setAttribute('disabled', '');
+            }
+        })
+
+        $('#email-address').change(function() {
+            console.log('changed');
+            var validRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+
+            if (validRegex.test($('#email-address').val())) {
+                document.getElementById('emailHelp').innerHTML = 'Email is valid. 👍';
+                document.getElementById('emailHelp').classList.remove('red');
+                document.getElementById('emailHelp').classList.add('green');
+            }
+            else {
+                document.getElementById('emailHelp').innerHTML = 'Email is invalid. 👎';
+                document.getElementById('emailHelp').classList.add('red');
+                document.getElementById('emailHelp').classList.remove('green');
+            }
+        })
+
+        $('#phone-number').change(function() {
+            console.log('changed');
+            var validRegex = /^\d{3}-\d{3}-\d{4}$/;
+
+            if (validRegex.test($('#phone-number').val())) {
+                document.getElementById('phoneHelp').innerHTML = 'Phone number is valid. 👍';
+                document.getElementById('phoneHelp').classList.remove('red');
+                document.getElementById('phoneHelp').classList.add('green');
+            }
+            else {
+                document.getElementById('phoneHelp').innerHTML = 'Phone number is invalid. 👎 (Format: 123-456-7890))';
+                document.getElementById('phoneHelp').classList.add('red');
+                document.getElementById('phoneHelp').classList.remove('green');
+            }
+        })
+    })
+</script>
+{% endblock %}

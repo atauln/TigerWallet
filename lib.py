@@ -7,7 +7,7 @@ from flask import session, request
 
 # dictionary of datetimes for all semesters
 # select the currect semester with evironmental variables
-first_date = datetime.datetime(2017, 7, 1, 0, 0, 0)
+first_date = datetime.datetime(2010, 7, 1, 0, 0, 0)
 
 semester_times = {
     2221: {
@@ -130,6 +130,7 @@ def process_location(raw_location):
         "SNACK": "Vending Machine (Snack)",
         "STARBUCKS": "Vending Machine (StarBucks)",
         "FOOD": "Vending Machine (FOOD)",
+        "MILK": "Vending Machine (Milk)",
         "Beanz": "Beanz",
         "Commons": "The Commons",
         "Gracie": "Gracie's",

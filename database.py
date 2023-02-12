@@ -114,10 +114,10 @@ def update_user(uid: str, first_name: str, last_name: str, pref_name: str, skey:
 
 def remove_user(uid: str):
     with Session(engine) as session:
-        session.query(UserInfo).filter(UserInfo.uid == uid).delete()
-        session.query(SessionData).filter(SessionData.uid == uid).delete()
         session.query(MealPlans).filter(MealPlans.uid == uid).delete()
+        session.query(SessionData).filter(SessionData.uid == uid).delete()
         session.query(Purchases).filter(Purchases.uid == uid).delete()
+        session.query(UserInfo).filter(UserInfo.uid == uid).delete()
         session.commit()
 
 def get_user(uid: str):

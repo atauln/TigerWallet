@@ -140,6 +140,28 @@ def purchases():
     return render_template("purchases.html", session=get_session(), spending=spending_per_day,
             plans=database.get_meal_plans(get_session_value('id')))
 
+@app.route('/settings')
+def settings():
+    """Method run upon opening the Settings tab"""
+
+    # give theme value if not already given
+    if not check_session_value('theme'):
+        set_session_value('theme', 'dark')
+
+    if database.user_exists(get_session_value('id')):
+        spending = database.get_purchases(get_session_value('id'), database.get_session_data(get_session_value('id')).default_plan)
+        if spending == []:
+            get_session().pop('id')
+            return redirect('/')
+    else:
+        log_to_console("id was invalid")
+        if check_session_value('id'):
+            get_session().pop('id')
+        return redirect('/')
+
+    return render_template("settings.html", session=get_session(),
+        plans=database.get_meal_plans(get_session_value('id')))
+
 @app.route('/stats')
 def stats():
     """Method run upon opening the Stats tab"""
