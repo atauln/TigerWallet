@@ -79,7 +79,7 @@ def force_retrieve_spending(skey, acct, format_output = 'csv', cid = 105):
 
     return result
 
-def get_formatted_spending(sess_data: database.SessionData, plan_id: int) -> list[database.Purchases]:
+def get_formatted_spending(sess_data: database.SessionData, plan_id: int):
     """Return an array of spending information in the form of Purchase items"""
     response = force_retrieve_spending(sess_data.skey, plan_id)
 

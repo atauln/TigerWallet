@@ -6,11 +6,6 @@ ADD ./ /app
 COPY ./requirements.txt requirements.txt
 RUN apt-get -yq update && \
     pip install --no-cache-dir -r requirements.txt
-RUN apt-get upgrade -y && \
-    apt-get install -y nodejs && \
-    apt-get install -y npm && \
-    npm init -y && \
-    npm i chart.js
 
 COPY . .
 

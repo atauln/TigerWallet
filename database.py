@@ -62,7 +62,7 @@ class Purchases(Base):
     new_balance: Mapped[float] = mapped_column(Float)
     plan_id: Mapped[int] = mapped_column()
     pid: Mapped[str] = mapped_column(String(32), primary_key=True)
-    
+
     def __repr__(self):
         return f'Purchases(uid={self.uid}, dt={self.dt}, location={self.location}, amount={self.amount}, new_balance={self.new_balance}, pid={self.pid}, plan_id={self.plan_id})'
 
@@ -89,7 +89,7 @@ class MealPlans(Base):
         return f'MealPlans(uid={self.uid}, plan_id={self.plan_id}, plan_name={self.plan_name}, pid={self.pid})'
 
 
-def create_user(uid: str, first_name: str, last_name: str, pref_name: str, skey: str, default_plan: int, plans: list[tuple[int, str]]):
+def create_user(uid: str, first_name: str, last_name: str, pref_name: str, skey: str, default_plan: int, plans):
     """Creates User, session data, and fills in meal plans"""
     with Session(engine) as session:
         user = UserInfo(
@@ -173,19 +173,19 @@ def add_purchase(purchase: Purchases):
         session.add(purchase)
         session.commit()
 
-def safely_add_purchases(uid: str, purchases: list[Purchases]):
+def safely_add_purchases(uid: str, purchases):
     with Session(engine) as session:
         session.query(Purchases).filter(Purchases.uid == uid).filter(Purchases.plan_id == purchases[0].plan_id).delete()
         #print (f"DELETED {uid} {purchases[0].plan_id}")
         session.add_all(purchases)
         session.commit()
 
-def add_meal_plans(meal_plans: list[MealPlans]):
+def add_meal_plans(meal_plans):
     with Session(engine) as session:
         session.add_all(meal_plans)
         session.commit()
 
-def replace_meal_plans(uid: str, meal_plans: list[MealPlans]):
+def replace_meal_plans(uid: str, meal_plans):
     with Session(engine) as session:
         session.query(MealPlans).filter(MealPlans.uid == uid).delete()
         session.add_all(meal_plans)

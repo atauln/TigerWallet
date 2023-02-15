@@ -36,7 +36,7 @@ def get_date_strings():
         semester_times[int(os.getenv("CURRENT_SEMESTER"))]["end"].strftime("%-m/%d/%Y")
     )
 
-def get_first_purchase_date(spending: list[database.Purchases]) -> datetime.datetime:
+def get_first_purchase_date(spending) -> datetime.datetime:
     """Returns the first date of purchase"""
 
     # Using the second to last result is important, as 
@@ -162,7 +162,7 @@ def process_location(raw_location):
     print(f"got nothing for: {raw_location}")
     return "Unknown"
 
-def get_spending_per_day(spending: list[database.Purchases], days):
+def get_spending_per_day(spending, days):
     """Uses the spending to generate a dictionary of spending per day"""
     a_sum = 0
     count = 0
