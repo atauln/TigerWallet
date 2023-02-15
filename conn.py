@@ -15,6 +15,7 @@ import database
 
 from datetime import datetime
 from bs4 import BeautifulSoup
+from twilio.rest import Client
 
 def verify_skey_integrity(skey):
     """Verifies the integrity of the skey."""
@@ -180,3 +181,20 @@ def get_account_info(skey, cid=105):
     ]
 
     return account_data # [account_id, first_name, last_name]
+
+def send_twilio_message(phone_number, message):
+    """Send a message to a phone number using Twilio."""
+
+    account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+    twilio_number = os.getenv("TWILIO_NUMBER")
+
+    client = Client(account_sid, auth_token)
+
+    message = client.messages.create(
+        to=f"+1{phone_number}",
+        from_=f"+1{twilio_number}",
+        body=message
+    )
+
+    return message

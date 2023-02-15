@@ -62,7 +62,7 @@ class Purchases(Base):
     new_balance: Mapped[float] = mapped_column(Float)
     plan_id: Mapped[int] = mapped_column()
     pid: Mapped[str] = mapped_column(String(32), primary_key=True)
-
+    
     def __repr__(self):
         return f'Purchases(uid={self.uid}, dt={self.dt}, location={self.location}, amount={self.amount}, new_balance={self.new_balance}, pid={self.pid}, plan_id={self.plan_id})'
 

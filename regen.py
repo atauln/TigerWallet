@@ -1,6 +1,7 @@
 import time
 
-from conn import get_formatted_spending, verify_skey_integrity
+from conn import get_formatted_spending, verify_skey_integrity, send_twilio_message
+from lib import get_transaction_as_text
 import database
 
 from threading import Thread
@@ -14,7 +15,9 @@ def update_based_on_skey(entry: str, results: list[int], index: int):
     if user is None:
         return False
     user_settings = database.get_user_settings(user.uid)
+    assert user_settings is not None
     if user_settings is not None:
+        print (f"User Settings: {user_settings}")
         if not user_settings.credential_sync:
             return False
     if not verify_skey_integrity(entry):
@@ -23,9 +26,20 @@ def update_based_on_skey(entry: str, results: list[int], index: int):
     else:
         for plan in database.get_meal_plans(user.uid):
             try:
-                database.safely_add_purchases(user.uid, get_formatted_spending(database.get_session_data(user.uid), plan.plan_id))
-            except Exception:
-                pass
+                new_data = get_formatted_spending(database.get_session_data(user.uid), plan.plan_id)
+                if user_settings.receipt_notifications and new_data is not None:
+                    old_data = database.get_purchases(user.uid, plan.plan_id)
+                    if old_data is None:
+                        old_data = []
+                    elif len(new_data) > len(old_data):
+                        print ("Sending receipt notifications!")
+                        send_twilio_message(
+                            user_settings.phone_number.replace("-", "").replace("(", "").replace(")", "").replace(" ", ""),
+                            get_transaction_as_text(new_data[0])
+                        )
+                database.safely_add_purchases(user.uid, new_data)
+            except Exception as e:
+                print (e)
         print (f"Updated {user.uid}!")
         results[index] += 1
         print (f"Time taken: {time.perf_counter() - start}")

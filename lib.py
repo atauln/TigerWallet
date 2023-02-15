@@ -177,3 +177,7 @@ def get_spending_per_day(spending: list[database.Purchases], days):
         spending_list = spending_a[purchase.dt.date()]
         spending_list.append(purchase)
     return spending_a, a_sum, count
+
+def get_transaction_as_text(transaction: database.Purchases):
+    """Returns a transaction as a string"""
+    return f"({get_meal_plan_name(transaction.plan_id)}) A purchase of ${transaction.amount} was made at {process_location(transaction.location)} at {transaction.dt.strftime('%H:%M%p')}! Your balance is now ${transaction.new_balance}."
