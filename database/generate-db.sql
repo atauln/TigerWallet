@@ -3,6 +3,7 @@ use TigerWallet;
 drop table IF EXISTS Purchases;
 drop table IF EXISTS MealPlans;
 drop table IF EXISTS SessionData;
+drop table IF EXISTS UserSettings;
 drop table IF EXISTS UserInfo;
 
 SHOW TABLES;
@@ -14,6 +15,17 @@ CREATE table UserInfo (
     first_sign_in datetime,
     last_sign_in datetime,
     total_auths int DEFAULT 0,
+    primary key (uid)
+);
+
+CREATE TABLE UserSettings (
+	uid varchar(37),
+    credential_sync bool,
+    receipt_notifications bool,
+    balance_notifications bool,
+    email_address varchar(64),
+    phone_number varchar(16),
+    foreign key (uid) references UserInfo(uid),
     primary key (uid)
 );
 

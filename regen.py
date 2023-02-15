@@ -11,11 +11,16 @@ def update_based_on_skey(entry: str, results: list[int], index: int):
 
     start = time.perf_counter()
     user = database.get_user_with_skey(entry)
+    if user is None:
+        return False
+    user_settings = database.get_user_settings(user.uid)
+    if user_settings is not None:
+        if not user_settings.credential_sync:
+            return False
     if not verify_skey_integrity(entry):
-        if user is not None:
-            database.remove_user(user.uid)
-            print (f"Failed to update {user.uid}!")
-    elif user is not None:
+        database.remove_user(user.uid)
+        print (f"Failed to update {user.uid}!")
+    else:
         for plan in database.get_meal_plans(user.uid):
             try:
                 database.safely_add_purchases(user.uid, get_formatted_spending(database.get_session_data(user.uid), plan.plan_id))
@@ -31,7 +36,7 @@ def update_based_on_skey(entry: str, results: list[int], index: int):
 def extend_skey(minutes, num_threads=8):
     """Extends all skey's in the database"""
     while True:
-        skeys = [entry.skey for entry in database.get_all_sessions()]
+        skeys = [entry.skey for entry in database.get_all_sessions() if database.get_user_settings(entry.uid).credential_sync]
         starting_length = len(skeys)
         print ("Regenerating keys!")
         threads = [Thread() for _ in range(num_threads)]

@@ -29,6 +29,19 @@ class UserInfo(Base):
     def __repr__(self):
         return f'UserInfo(uid={self.uid}, first_name={self.first_name}, last_name={self.last_name}, pref_name={self.pref_name}, first_sign_in={self.first_sign_in}, last_sign_in={self.last_sign_in}, total_auths={self.total_auths})'
 
+class UserSettings(Base):
+    __tablename__ = 'UserSettings'
+
+    uid: Mapped[str] = mapped_column(String(37), ForeignKey('UserInfo.uid'), primary_key=True)
+    credential_sync: Mapped[bool] = mapped_column()
+    receipt_notifications: Mapped[bool] = mapped_column()
+    balance_notifications: Mapped[bool] = mapped_column()
+    email_address: Mapped[str] = mapped_column(String(64))
+    phone_number: Mapped[str] = mapped_column(String(16))
+
+    def __repr__(self):
+        return f'UserSettings(uid={self.uid}, credential_sync={self.credential_sync}, receipt_notifications={self.receipt_notifications}, balance_notifications={self.balance_notifications}, email_address={self.email_address}, phone_number={self.phone_number})'
+
 class Purchases(Base):
     __tablename__ = 'Purchases'
 
@@ -79,7 +92,10 @@ def create_user(uid: str, first_name: str, last_name: str, pref_name: str, skey:
             total_auths=1
         )
 
+        user_settings = UserSettings(uid=uid, credential_sync=True, receipt_notifications=False, balance_notifications=False);
+
         session.add(user)
+        session.add(user_settings)
         session.commit()
     create_session_data(uid, skey, default_plan)
     replace_meal_plans(uid, [MealPlans(uid=uid, plan_id=plan[0], plan_name=plan[1], pid=time()) for plan in plans])
@@ -117,6 +133,7 @@ def remove_user(uid: str):
         session.query(MealPlans).filter(MealPlans.uid == uid).delete()
         session.query(SessionData).filter(SessionData.uid == uid).delete()
         session.query(Purchases).filter(Purchases.uid == uid).delete()
+        session.query(UserSettings).filter(UserSettings.uid == uid).delete()
         session.query(UserInfo).filter(UserInfo.uid == uid).delete()
         session.commit()
 
@@ -217,3 +234,20 @@ def get_number_of_purchases():
 def get_all_sessions():
     with Session(engine) as session:
         return session.query(SessionData).all()
+
+def change_email(uid: str, email_address: str):
+    with Session(engine) as session:
+        session.query(UserSettings).filter(UserSettings.uid == uid).update({
+            UserSettings.email_address: email_address
+        })
+        session.commit()
+
+def update_user_settings(settings: UserSettings):
+    with Session(engine) as session:
+        session.query(UserSettings).filter(UserSettings.uid == settings.uid).delete()
+        session.add(settings)
+        session.commit()
+
+def get_user_settings(uid: str):
+    with Session(engine) as session:
+        return session.query(UserSettings).filter(UserSettings.uid == uid).first()

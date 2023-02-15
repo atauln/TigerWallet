@@ -140,9 +140,41 @@ def purchases():
     return render_template("purchases.html", session=get_session(), spending=spending_per_day,
             plans=database.get_meal_plans(get_session_value('id')))
 
-@app.route('/settings')
+@app.route('/settings', methods=['GET', 'POST'])
 def settings():
     """Method run upon opening the Settings tab"""
+
+    # set database values with post data if post request
+    print (request.method)
+    if request.method == 'POST':
+        print (request.get_json(force=True))
+        post_data = request.get_json()
+        if database.user_exists(post_data['id']):
+            settings = database.UserSettings(uid=post_data['id'])
+            old_settings = database.get_user_settings(post_data['id'])
+            if 'credential-sync' in post_data:
+                settings.credential_sync = bool(post_data['credential-sync'])
+            else:
+                settings.credential_sync = old_settings.credential_sync
+            if 'receipt-notifications' in post_data:
+                settings.receipt_notifications = bool(post_data['receipt-notifications'])
+            else:
+                settings.receipt_notifications = old_settings.receipt_notifications
+            if 'balance-notifications' in post_data:
+                settings.balance_notifications = bool(post_data['balance-notifications'])
+            else:
+                settings.balance_notifications = old_settings.balance_notifications
+            if 'email-address' in post_data:
+                settings.email_address = post_data['email-address']
+            else:
+                settings.email_address = old_settings.email_address
+            if 'phone-number' in post_data:
+                settings.phone_number = post_data['phone-number']
+            else:
+                settings.phone_number = old_settings.phone_number
+
+            print (settings)
+            database.update_user_settings(settings)
 
     # give theme value if not already given
     if not check_session_value('theme'):

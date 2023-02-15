@@ -23,7 +23,7 @@
 <div class="feature col">
     <h3 class="heading">{{heading}}</h3>
     <p class="primary">{{description}}</p>
-    <div style="margin:0; display:flex; justify-content:center">
+    <div style="margin-bottom:0; display:flex; justify-content:center">
         <input type="checkbox" class="btn-check" id="{{button_id}}" autocomplete="off">
         <label class="btn btn-outline-primary" id="{{button_id}}-helper" for="{{button_id}}">Disabled</label><br>
     </div>
@@ -126,6 +126,21 @@
         }
     }
 
+    post_data = function(body_data) {
+        try {
+            const response = fetch('/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body_data)
+            })
+            console.log('Completed! ', response);
+        } catch (error) {
+            console.log('Error: ', error);
+        }
+    }
+
     $(document).ready(function() {
         document.getElementById('receipt-notifications').setAttribute('disabled', '');
         document.getElementById('balance-notifications').setAttribute('disabled', '');
@@ -140,18 +155,35 @@
             document.getElementById('credential-sync-helper').innerHTML = ($('#credential-sync').is(':checked')) ? 'Enabled' : 'Disabled';
             document.getElementById('receipt-notifications-helper').innerHTML = 'Disabled';
             document.getElementById('balance-notifications-helper').innerHTML = 'Disabled';
+
+            post_data({
+                'credential-sync': $('#credential-sync').is(':checked'),
+                'receipt-notifications': $('#receipt-notifications').is(':checked'),
+                'balance-notifications': $('#balance-notifications').is(':checked'),
+                'id': '{{ session["id"] }}'
+            })
         })
 
         $('#receipt-notifications').click(function() {
             console.log('clicked');
             update();
             document.getElementById('receipt-notifications-helper').innerHTML = ($('#receipt-notifications').is(':checked')) ? 'Enabled' : 'Disabled';
+
+            post_data({
+                'receipt-notifications': $('#receipt-notifications').is(':checked'),
+                'id': '{{ session["id"] }}'
+            })
         })
 
         $('#balance-notifications').click(function() {
             console.log('clicked');
             update();
             document.getElementById('balance-notifications-helper').innerHTML = ($('#balance-notifications').is(':checked')) ? 'Enabled' : 'Disabled';
+
+            post_data({
+                'balance-notifications': $('#balance-notifications').is(':checked'),
+                'id': '{{ session["id"] }}'
+            })
         })
 
         $('#email-address').change(function() {
@@ -162,6 +194,11 @@
                 document.getElementById('emailHelp').innerHTML = 'Email is valid. 👍';
                 document.getElementById('emailHelp').classList.remove('red');
                 document.getElementById('emailHelp').classList.add('green');
+
+                post_data({
+                    'email-address': $('#email-address').val(),
+                    'id': '{{ session["id"] }}'
+                })
             }
             else {
                 document.getElementById('emailHelp').innerHTML = 'Email is invalid. 👎';
@@ -178,9 +215,14 @@
                 document.getElementById('phoneHelp').innerHTML = 'Phone number is valid. 👍';
                 document.getElementById('phoneHelp').classList.remove('red');
                 document.getElementById('phoneHelp').classList.add('green');
+
+                post_data({
+                    'phone-number': $('#phone-number').val(),
+                    'id': '{{ session["id"] }}'
+                })
             }
             else {
-                document.getElementById('phoneHelp').innerHTML = 'Phone number is invalid. 👎 (Format: 123-456-7890))';
+                document.getElementById('phoneHelp').innerHTML = 'Phone number is invalid. 👎 (123-456-7890)';
                 document.getElementById('phoneHelp').classList.add('red');
                 document.getElementById('phoneHelp').classList.remove('green');
             }
