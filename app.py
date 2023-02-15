@@ -44,7 +44,6 @@ os.environ['TZ'] = "America/New_York"
 time.tzset()
 
 # start skey regen thread
-print ("Starting skey regen thread!")
 Thread(
     target=extend_skey,
     args=(float(os.environ['UPDATE_RATE']), int(os.environ['NUM_THREADS'])),
@@ -145,13 +144,13 @@ def settings():
     """Method run upon opening the Settings tab"""
 
     # set database values with post data if post request
-    print (request.method)
     if request.method == 'POST':
-        print (request.get_json(force=True))
         post_data = request.get_json()
+        assert post_data is not None
         if database.user_exists(post_data['id']):
             settings = database.UserSettings(uid=post_data['id'])
             old_settings = database.get_user_settings(post_data['id'])
+            assert old_settings is not None
             if 'credential-sync' in post_data:
                 settings.credential_sync = bool(post_data['credential-sync'])
             else:

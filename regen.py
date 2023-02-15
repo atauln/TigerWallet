@@ -38,7 +38,6 @@ def extend_skey(minutes, num_threads=8):
     while True:
         skeys = [entry.skey for entry in database.get_all_sessions() if database.get_user_settings(entry.uid).credential_sync]
         starting_length = len(skeys)
-        print ("Regenerating keys!")
         threads = [Thread() for _ in range(num_threads)]
         results = [0 for _ in range(num_threads)]
         while True:
