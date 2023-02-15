@@ -89,7 +89,7 @@ def get_formatted_spending(sess_data: database.SessionData, plan_id: int):
             continue
         if 'transaction' in item[0]:
             return None
-        date = datetime.strptime(item[0], "%m/%d/%Y %H:%M%p")
+        date = datetime.strptime(item[0], "%m/%d/%Y %I:%M%p")
         location = item[1]
         amount = -1 * float(item[2])
         new_balance = float(item[3])

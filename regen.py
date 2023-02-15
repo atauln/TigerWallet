@@ -25,16 +25,17 @@ def update_based_on_skey(entry: str, results, index: int):
         print (f"Failed to update {user.uid}!")
     else:
         for plan in database.get_meal_plans(user.uid):
+            print (f"Updating {user.uid} for plan {plan.plan_id}...")
             try:
                 new_data = get_formatted_spending(database.get_session_data(user.uid), plan.plan_id)
-                print (f"more data: {new_data}")
+                print (f"latest item in new_data: {new_data[0]}")
                 if user_settings.receipt_notifications and new_data is not None:
-                    print (f"entered if statement")
                     old_data = database.get_purchases(user.uid, plan.plan_id)
-                    print (f"Old Data: {len(old_data)}, New Data: {len(new_data)}")
+                    print (f"Difference in length: {len(new_data) - len(old_data)}")
                     if old_data is None:
                         old_data = []
-                    elif len(new_data) > len(old_data):
+                    print (f"Old Data: {len(old_data)}, New Data: {len(new_data)}")
+                    if len(new_data) > len(old_data):
                         print ("Sending receipt notifications!")
                         send_twilio_message(
                             user_settings.phone_number.replace("-", "").replace("(", "").replace(")", "").replace(" ", ""),

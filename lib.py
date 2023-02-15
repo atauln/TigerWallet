@@ -180,4 +180,4 @@ def get_spending_per_day(spending, days):
 
 def get_transaction_as_text(transaction: database.Purchases):
     """Returns a transaction as a string"""
-    return f"({get_meal_plan_name(transaction.plan_id)}) A purchase of ${transaction.amount} was made at {process_location(transaction.location)} at {transaction.dt.strftime('%H:%M%p')}! Your balance is now ${transaction.new_balance}."
+    return f"({get_meal_plan_name(transaction.plan_id)}) A purchase of ${transaction.amount} was made at {process_location(transaction.location)} at {transaction.dt.strftime('%-I:%M%p')}! Your balance is now ${transaction.new_balance}."

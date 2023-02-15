@@ -44,7 +44,7 @@
                 {% endif %}
                 {% for record in list %}
                 <tr>
-                    <td scope="row">{{ record.dt.strftime("%H:%M%p") }}</th>
+                    <td scope="row">{{ record.dt.strftime("%-I:%M%p") }}</th>
                     <td colspan="4">{{ record.location }}</td>
                     <td>{{ "${:,.2f}".format(record.amount * -1) }}</td>
                 </tr>
