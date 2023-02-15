@@ -42,6 +42,16 @@ class UserSettings(Base):
     def __repr__(self):
         return f'UserSettings(uid={self.uid}, credential_sync={self.credential_sync}, receipt_notifications={self.receipt_notifications}, balance_notifications={self.balance_notifications}, email_address={self.email_address}, phone_number={self.phone_number})'
 
+    def toJson(self):
+        return {
+            'uid': self.uid,
+            'credential_sync': self.credential_sync,
+            'receipt_notifications': self.receipt_notifications,
+            'balance_notifications': self.balance_notifications,
+            'email_address': self.email_address,
+            'phone_number': self.phone_number
+        }
+
 class Purchases(Base):
     __tablename__ = 'Purchases'
 

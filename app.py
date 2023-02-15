@@ -191,8 +191,11 @@ def settings():
             get_session().pop('id')
         return redirect('/')
 
+    print (database.get_user_settings(get_session_value('id')).toJson())
+
     return render_template("settings.html", session=get_session(),
-        plans=database.get_meal_plans(get_session_value('id')))
+        plans=database.get_meal_plans(get_session_value('id')),
+        settings=database.get_user_settings(get_session_value('id')).toJson())
 
 @app.route('/stats')
 def stats():
