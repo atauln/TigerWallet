@@ -143,6 +143,9 @@
         } else {
             document.getElementById('balance-notifications-helper').innerHTML = 'Disabled';
         }
+
+        $('#email-address').change();
+        $('#phone-number').change();
     }
 
     post_data = function(body_data) {
@@ -164,42 +167,6 @@
         document.getElementById('balance-notifications').setAttribute('disabled', '');
         document.getElementById('email-address').setAttribute('disabled', '');
         document.getElementById('phone-number').setAttribute('disabled', '');
-
-        update();
-
-        $('#credential-sync').click(function() {
-            update();
-            document.getElementById('credential-sync-helper').innerHTML = ($('#credential-sync').is(':checked')) ? 'Enabled' : 'Disabled';
-            document.getElementById('receipt-notifications-helper').innerHTML = 'Disabled';
-            document.getElementById('balance-notifications-helper').innerHTML = 'Disabled';
-
-            post_data({
-                'credential-sync': $('#credential-sync').is(':checked'),
-                'receipt-notifications': $('#receipt-notifications').is(':checked'),
-                'balance-notifications': $('#balance-notifications').is(':checked'),
-                'id': '{{ session["id"] }}'
-            })
-        })
-
-        $('#receipt-notifications').click(function() {
-            update();
-            document.getElementById('receipt-notifications-helper').innerHTML = ($('#receipt-notifications').is(':checked')) ? 'Enabled' : 'Disabled';
-
-            post_data({
-                'receipt-notifications': $('#receipt-notifications').is(':checked'),
-                'id': '{{ session["id"] }}'
-            })
-        })
-
-        $('#balance-notifications').click(function() {
-            update();
-            document.getElementById('balance-notifications-helper').innerHTML = ($('#balance-notifications').is(':checked')) ? 'Enabled' : 'Disabled';
-
-            post_data({
-                'balance-notifications': $('#balance-notifications').is(':checked'),
-                'id': '{{ session["id"] }}'
-            })
-        })
 
         $('#email-address').change(function() {
             var validRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -267,6 +234,42 @@
                 document.getElementById('phoneHelp').classList.add('red');
                 document.getElementById('phoneHelp').classList.remove('green');
             }
+        })
+
+        update();
+
+        $('#credential-sync').click(function() {
+            update();
+            document.getElementById('credential-sync-helper').innerHTML = ($('#credential-sync').is(':checked')) ? 'Enabled' : 'Disabled';
+            document.getElementById('receipt-notifications-helper').innerHTML = 'Disabled';
+            document.getElementById('balance-notifications-helper').innerHTML = 'Disabled';
+
+            post_data({
+                'credential-sync': $('#credential-sync').is(':checked'),
+                'receipt-notifications': $('#receipt-notifications').is(':checked'),
+                'balance-notifications': $('#balance-notifications').is(':checked'),
+                'id': '{{ session["id"] }}'
+            })
+        })
+
+        $('#receipt-notifications').click(function() {
+            update();
+            document.getElementById('receipt-notifications-helper').innerHTML = ($('#receipt-notifications').is(':checked')) ? 'Enabled' : 'Disabled';
+
+            post_data({
+                'receipt-notifications': $('#receipt-notifications').is(':checked'),
+                'id': '{{ session["id"] }}'
+            })
+        })
+
+        $('#balance-notifications').click(function() {
+            update();
+            document.getElementById('balance-notifications-helper').innerHTML = ($('#balance-notifications').is(':checked')) ? 'Enabled' : 'Disabled';
+
+            post_data({
+                'balance-notifications': $('#balance-notifications').is(':checked'),
+                'id': '{{ session["id"] }}'
+            })
         })
     })
 </script>

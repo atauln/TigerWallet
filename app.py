@@ -172,7 +172,6 @@ def settings():
             else:
                 settings.phone_number = old_settings.phone_number
 
-            print (settings)
             database.update_user_settings(settings)
 
     # give theme value if not already given
@@ -189,8 +188,6 @@ def settings():
         if check_session_value('id'):
             get_session().pop('id')
         return redirect('/')
-
-    print (database.get_user_settings(get_session_value('id')).toJson())
 
     return render_template("settings.html", session=get_session(),
         plans=database.get_meal_plans(get_session_value('id')),
