@@ -29,7 +29,7 @@ def update_based_on_skey(entry: str, results, index: int):
                 new_data = get_formatted_spending(database.get_session_data(user.uid), plan.plan_id)
                 if user_settings.receipt_notifications and new_data is not None:
                     old_data = database.get_purchases(user.uid, plan.plan_id)
-                    print (f"Old Data: {len(old_data)}, New Data: {len(new_data")
+                    print (f"Old Data: {len(old_data)}, New Data: {len(new_data)}")
                     if old_data is None:
                         old_data = []
                     elif len(new_data) > len(old_data):
