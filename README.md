@@ -27,7 +27,7 @@
 <!-- Status -->
 
 <h3 align="center"> 
-	🚀 <a href="https://www.tigerwallet.cs.house">Demo</a> 🚀
+	🚀 <a href="https://tigerwallet.cs.house">Demo</a> 🚀
 </h3>
 
 <p align="center">
