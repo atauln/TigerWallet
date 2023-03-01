@@ -145,18 +145,18 @@ def add_purchase(purchase: Purchases):
         session.add(purchase)
         session.commit()
 
-def safely_add_purchases(uid: str, purchases: list[Purchases]):
+def safely_add_purchases(uid: str, purchases):
     with Session(engine) as session:
         session.query(Purchases).filter(Purchases.uid == uid).filter(Purchases.plan_id == purchases[0].plan_id).delete()
         session.add_all(purchases)
         session.commit()
 
-def add_meal_plans(meal_plans: list[MealPlans]):
+def add_meal_plans(meal_plans):
     with Session(engine) as session:
         session.add_all(meal_plans)
         session.commit()
 
-def replace_meal_plans(uid: str, meal_plans: list[MealPlans]):
+def replace_meal_plans(uid: str, meal_plans):
     with Session(engine) as session:
         session.query(MealPlans).filter(MealPlans.uid == uid).delete()
         session.add_all(meal_plans)
