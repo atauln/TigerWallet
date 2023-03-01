@@ -66,7 +66,7 @@ class MealPlans(Base):
         return f'MealPlans(uid={self.uid}, plan_id={self.plan_id}, plan_name={self.plan_name}, pid={self.pid})'
 
 
-def create_user(uid: str, first_name: str, last_name: str, pref_name: str, skey: str, default_plan: int, plans: list[tuple[int, str]]):
+def create_user(uid: str, first_name: str, last_name: str, pref_name: str, skey: str, default_plan: int, plans):
     """Creates User, session data, and fills in meal plans"""
     with Session(engine) as session:
         user = UserInfo(

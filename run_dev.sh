@@ -7,4 +7,4 @@
 clear
 podman build -t dev .
 echo "---- RUNNING ----"
-podman run -p 8080:8080 dev
+podman run -p 8080:8080 dev --env-file=.env
