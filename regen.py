@@ -5,7 +5,7 @@ from conn import get_formatted_spending, verify_skey_integrity
 
 from threading import Thread
 
-def update_based_on_skey(entry: str, results: list[int], index: int):
+def update_based_on_skey(entry: str, results, index: int):
     """Update the value based on an skey
     Made for extend_skey()"""
 
