@@ -44,11 +44,13 @@ os.environ['TZ'] = "America/New_York"
 time.tzset()
 
 # start skey regen thread
+print("Starting background thread")
 Thread(
     target=extend_skey,
     args=(float(os.environ['UPDATE_RATE']), int(os.environ['NUM_THREADS'])),
     daemon=True,
     name='Background').start()
+
 
 @app.route('/')
 def landing():
@@ -57,16 +59,19 @@ def landing():
 
     if not check_session_value('theme'):
         set_session_value('theme', 'dark')
-    
+
     if database.user_exists(get_session_value('id')):
-        spending = database.get_purchases(get_session_value('id'), database.get_session_data(get_session_value('id')).default_plan)
+        spending = database.get_purchases(
+            get_session_value('id'),
+            database.get_session_data(get_session_value('id')).default_plan
+        )
         if spending == []:
             get_session().pop('id')
             return redirect('/')
-        elif spending == None:
+        elif spending is None:
             for plan in database.get_meal_plans(get_session_value('id')):
                 spending = database.get_purchases(get_session_value('id'), plan.plan_id)
-                if spending != None:
+                if spending is not None:
                     database.change_default_plan(get_session_value('id'), plan.plan_id)
                     break
     else:

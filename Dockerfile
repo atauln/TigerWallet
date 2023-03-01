@@ -11,4 +11,6 @@ COPY . .
 
 WORKDIR /app/
 
-CMD [ "gunicorn", "--bind", "0.0.0.0:8080", "--log-level", "info", "--access-logfile", "-", "app:app"]
+ENV PYTHONUNBUFFERED True
+
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--log-level", "info", "--access-logfile", "-", "app:app"]

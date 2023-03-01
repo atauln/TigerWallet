@@ -18,17 +18,6 @@ CREATE table UserInfo (
     primary key (uid)
 );
 
-CREATE TABLE UserSettings (
-	uid varchar(37),
-    credential_sync bool,
-    receipt_notifications bool,
-    balance_notifications bool,
-    email_address varchar(64),
-    phone_number varchar(16),
-    foreign key (uid) references UserInfo(uid),
-    primary key (uid)
-);
-
 SHOW TABLES;
 CREATE table MealPlans (
 	uid varchar(37),

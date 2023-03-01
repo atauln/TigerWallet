@@ -17,7 +17,6 @@ def update_based_on_skey(entry: str, results, index: int):
     user_settings = database.get_user_settings(user.uid)
     assert user_settings is not None
     if user_settings is not None:
-        print (f"User Settings: {user_settings}")
         if not user_settings.credential_sync:
             return False
     if not verify_skey_integrity(entry):
@@ -25,16 +24,13 @@ def update_based_on_skey(entry: str, results, index: int):
         print (f"Failed to update {user.uid}!")
     else:
         for plan in database.get_meal_plans(user.uid):
-            print (f"Updating {user.uid} for plan {plan.plan_id}...")
             try:
                 new_data = get_formatted_spending(database.get_session_data(user.uid), plan.plan_id)
-                print (f"latest item in new_data: {new_data[0]}")
                 if user_settings.receipt_notifications and new_data is not None:
                     old_data = database.get_purchases(user.uid, plan.plan_id)
-                    print (f"Difference in length: {len(new_data) - len(old_data)}")
+                    print (f"{user.uid} | {plan.plan_id} had {len(new_data) - len(old_data)} new items, ({new_data[0].dt.strftime('%I:%M%p')})")
                     if old_data is None:
                         old_data = []
-                    print (f"Old Data: {len(old_data)}, New Data: {len(new_data)}")
                     if len(new_data) > len(old_data):
                         print ("Sending receipt notifications!")
                         send_twilio_message(

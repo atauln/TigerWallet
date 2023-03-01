@@ -1,53 +1,53 @@
 .foreground {
-    color: #ebf7f6;
-    text-align:center;
+  color: #ebf7f6;
+  text-align: center;
 }
 .primary {
-    color: #72C0B7;
-    text-align:center;
+  color: #72c0b7;
+  text-align: center;
 }
 .theme-color {
-    color: #09332e;
+  color: #09332e;
 }
 label {
-    color: #ebf7f6;
+  color: #ebf7f6;
 }
 .progress {
-    --bs-progress-bar-bg: #1B998B;
-    --bs-progress-bar-color: #09332e;
+  --bs-progress-bar-bg: #1b998b;
+  --bs-progress-bar-color: #09332e;
 }
 .datehead {
-    --bs-table-striped-bg:#393539;
-    --bs-table-bg:#393539;
+  --bs-table-striped-bg: #393539;
+  --bs-table-bg: #393539;
 }
 .white {
-    color: #ebf7f6;
+  color: #ebf7f6;
 }
 .green {
-    color: #01b636 !important;
+  color: #01b636 !important;
 }
 .red {
-    color: #ff0000 !important;
+  color: #ff0000 !important;
 }
 body {
-    background-size: cover;
-    background-color: #09332e;
+  background-size: cover;
+  background-color: #09332e;
 }
 .heading {
-    margin-top:10px;
-    background-color:#1B998B;
-    color:white;
-    text-align:center
+  margin-top: 10px;
+  background-color: #1b998b;
+  color: white;
+  text-align: center;
 }
 .section {
-    border:4px inset #1B998B;
-    vertical-align: middle;
+  border: 4px inset #1b998b;
+  vertical-align: middle;
 }
 .table-bordered {
-    border-color: #1B998B;
-    border-style: inset;
-    border-width: 4px;
+  border-color: #1b998b;
+  border-style: inset;
+  border-width: 4px;
 }
 .navbar {
-    background-color: #1B998B;
+  background-color: #1b998b;
 }

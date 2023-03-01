@@ -68,6 +68,8 @@ def force_retrieve_spending(skey, acct, format_output = 'csv', cid = 105):
         log_to_console("Failed to connect to TigerSpend!")
         return '[]'
 
+    print (response.url)
+
     lines = response.content.decode(response.encoding).splitlines()
     reader = csv.reader(lines)
     result = list(reader)
