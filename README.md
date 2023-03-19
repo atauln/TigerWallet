@@ -42,6 +42,8 @@
 
 <br>
 
+<img src="./screenshot.png" alt="Tigerwallet Screenshot"/>
+
 ## :dart: About ##
 
 This project utilizes RIT's TigerSpend API to receive purchase information for users and display it in a user-friendly manner.
